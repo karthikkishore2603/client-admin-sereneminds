@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./Institute.css";
 import { FiEdit, FiFilter, FiDownload, FiMaximize2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import "./Institute.css";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -154,156 +155,215 @@ const Institute = () => {
 
   if (showForm) {
     return (
-      <div className="institute-container">
-        <h3 className="institute-heading">
-          {isEdit ? "Edit" : "Create"} Institute
-        </h3>
-        <form className="institute-form" onSubmit={handleFormSubmit}>
-          <div className="upload-section">
-            <div className="avatar" />
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-                id="file-upload"
+      <div className="institute-form-container">
+        <div className="breadcrumb">
+          <span>
+            <svg width="16" height="16" fill="none">
+              <circle cx="8" cy="8" r="8" fill="#E0E0E0" />
+              <path
+                d="M8 4v4l2.5 2.5"
+                stroke="#888"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-              <label htmlFor="file-upload">
+            </svg>
+          </span>
+          <span>Institute</span>
+          <span style={{ color: "#888" }}>&gt;</span>
+          <span>{isEdit ? "Edit" : "Create"}</span>
+        </div>
+        <div className="institute-form-card">
+          <form className="institute-form" onSubmit={handleFormSubmit}>
+            <div className="upload-section">
+              <div className="avatar-preview">
+                {form.image ? (
+                  <img
+                    src={URL.createObjectURL(form.image)}
+                    alt="Institute"
+                    className="avatar-img"
+                  />
+                ) : (
+                  <span className="avatar-icon">
+                    <svg width="48" height="48" fill="none">
+                      <circle cx="24" cy="24" r="24" fill="#e0e0e0" />
+                      <path
+                        d="M24 26c3.314 0 6-2.239 6-5s-2.686-5-6-5-6 2.239-6 5 2.686 5 6 5zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"
+                        fill="#bdbdbd"
+                      />
+                    </svg>
+                  </span>
+                )}
+              </div>
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload">
+                  <button
+                    type="button"
+                    className="upload-btn"
+                    onClick={() =>
+                      document.getElementById("file-upload").click()
+                    }
+                  >
+                    Upload
+                  </button>
+                </label>
                 <button
                   type="button"
-                  onClick={() => document.getElementById("file-upload").click()}
+                  className="reset-btn"
+                  onClick={() => setForm((prev) => ({ ...prev, image: null }))}
+                  disabled={!form.image}
                 >
-                  Upload
+                  Reset
                 </button>
-              </label>
+                <p className="upload-hint">
+                  Allowed JPG, GIF or PNG. Max size of 800kB
+                </p>
+              </div>
+            </div>
+            <fieldset className="form-section">
+              <legend>Institute</legend>
+              <div className="edit-grid">
+                <div className="field">
+                  <label>Institute Name</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Institute Name"
+                    value={form.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Pin Code</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Pin Code"
+                    value={form.pinCode}
+                    onChange={(e) => handleChange("pinCode", e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Address Line 1</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Address Line 1"
+                    value={form.addressLine1}
+                    onChange={(e) =>
+                      handleChange("addressLine1", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Address Line 2</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Address Line 2"
+                    value={form.addressLine2}
+                    onChange={(e) =>
+                      handleChange("addressLine2", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>City</label>
+                  <select
+                    className="institute-input"
+                    value={form.city}
+                    onChange={(e) => handleChange("city", e.target.value)}
+                  >
+                    <option>City</option>
+                    <option>Chennai</option>
+                    <option>Madurai</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>State</label>
+                  <select
+                    className="institute-input"
+                    value={form.state}
+                    onChange={(e) => handleChange("state", e.target.value)}
+                  >
+                    <option>Select</option>
+                    <option>Tamil Nadu</option>
+                    <option>Kerala</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset className="form-section">
+              <legend>Contact</legend>
+              <div className="edit-grid">
+                <div className="field">
+                  <label>Phone Number</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Phone Number"
+                    value={form.phoneNumber}
+                    onChange={(e) =>
+                      handleChange("phoneNumber", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Telephone Number</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Telephone Number"
+                    value={form.telephoneNumber}
+                    onChange={(e) =>
+                      handleChange("telephoneNumber", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Email ID</label>
+                  <input
+                    type="email"
+                    className="institute-input"
+                    placeholder="Email Address"
+                    value={form.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Website Link</label>
+                  <input
+                    type="text"
+                    className="institute-input"
+                    placeholder="Website Link"
+                    value={form.website}
+                    onChange={(e) => handleChange("website", e.target.value)}
+                  />
+                </div>
+              </div>
+            </fieldset>
+            <div className="form-buttons institute-form-actions">
+              <button type="submit" className="submit-btn">
+                {isEdit ? "Update" : "Submit"}
+              </button>
               <button
                 type="button"
-                onClick={() => setForm((prev) => ({ ...prev, image: null }))}
+                className="cancel-btn"
+                onClick={handleCancel}
               >
-                Reset
+                Cancel
               </button>
-              <p>Allowed JPG, GIF or PNG. Max size of 800KB</p>
             </div>
-          </div>
-          <fieldset className="form-section">
-            <legend>Institute</legend>
-            {isEdit && (
-              <div className="field">
-                <label>Institute Code</label>
-                <input type="text" value={editId} disabled />
-              </div>
-            )}
-            <div className="field">
-              <label>Institute Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                required
-              />
-            </div>
-            <div className="row">
-              <div className="field">
-                <label>Address Line 1</label>
-                <input
-                  type="text"
-                  value={form.addressLine1}
-                  onChange={(e) => handleChange("addressLine1", e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>Address Line 2</label>
-                <input
-                  type="text"
-                  value={form.addressLine2}
-                  onChange={(e) => handleChange("addressLine2", e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="row">
-              <div className="field">
-                <label>City</label>
-                <select
-                  value={form.city}
-                  onChange={(e) => handleChange("city", e.target.value)}
-                >
-                  <option>City</option>
-                  <option>Chennai</option>
-                  <option>Madurai</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>State</label>
-                <select
-                  value={form.state}
-                  onChange={(e) => handleChange("state", e.target.value)}
-                >
-                  <option>Select</option>
-                  <option>Tamil Nadu</option>
-                  <option>Kerala</option>
-                </select>
-              </div>
-            </div>
-            <div className="field">
-              <label>Pin Code</label>
-              <input
-                type="text"
-                value={form.pinCode}
-                onChange={(e) => handleChange("pinCode", e.target.value)}
-              />
-            </div>
-          </fieldset>
-          <fieldset className="form-section">
-            <legend>Contact</legend>
-            <div className="row">
-              <div className="field">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  value={form.phoneNumber}
-                  onChange={(e) => handleChange("phoneNumber", e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>Telephone Number</label>
-                <input
-                  type="text"
-                  value={form.telephoneNumber}
-                  onChange={(e) =>
-                    handleChange("telephoneNumber", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-            <div className="row">
-              <div className="field">
-                <label>Email ID</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>Website Link</label>
-                <input
-                  type="text"
-                  value={form.website}
-                  onChange={(e) => handleChange("website", e.target.value)}
-                />
-              </div>
-            </div>
-          </fieldset>
-          <div className="form-buttons">
-            <button type="submit" className="submit-btn">
-              {isEdit ? "Update" : "Submit"}
-            </button>
-            <button type="button" className="cancel-btn" onClick={handleCancel}>
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     );
   }
