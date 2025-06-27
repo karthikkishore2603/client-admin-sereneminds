@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Topbar from "./components/Topbar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -39,8 +39,23 @@ import SubCategory from "./pages/MasterData/SubCategory";
 import Impact from "./pages/MasterData/Impact";
 import Pleasantness from "./pages/MasterData/Pleasantness";
 import InstituteEdit from "./pages/MasterData/InstituteEdit";
+// Import Auth pages
+import Login from "./pages/Auth/Login";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ResetPassword from "./pages/Auth/ResetPassword";
 
 function App() {
+  const location = useLocation();
+  const authRoutes = ["/login", "/forgot-password", "/reset-password"];
+  if (authRoutes.includes(location.pathname)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Routes>
+    );
+  }
   return (
     <div style={{ display: "flex" }}>
       <Sidebar />

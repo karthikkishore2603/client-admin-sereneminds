@@ -1,0 +1,132 @@
+.auth-container {
+  display: flex;
+  min-height: 100vh;
+  background: #fafbfc;
+}
+
+.auth-illustration {
+  flex: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f8fa;
+}
+
+.auth-illustration img {
+  max-width: 80%;
+  height: auto;
+}
+
+.auth-form-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+  box-shadow: 0 0 24px 0 rgba(0, 0, 0, 0.04);
+}
+
+.auth-logo {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #b0b0b0;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.auth-logo .brand {
+  color: #b0b0b0;
+  margin-left: 0.5rem;
+}
+
+.auth-form-section h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+  color: #3a3a3a;
+}
+
+.auth-form-section p {
+  color: #888;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form label {
+  margin-bottom: 0.3rem;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #f9f9f9;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.auth-form input[type="email"]:focus,
+.auth-form input[type="password"]:focus {
+  border: 1.5px solid #1cc5b7;
+}
+
+.auth-form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.auth-link {
+  color: #1cc5b7;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: #179e91;
+  text-decoration: underline;
+}
+
+.auth-btn {
+  background: #1cc5b7;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.8rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  transition: background 0.2s;
+}
+
+.auth-btn:hover {
+  background: #179e91;
+}
+
+.auth-footer {
+  text-align: center;
+  font-size: 0.97rem;
+  color: #888;
+  margin-top: 1.2rem;
+}
+
+.auth-footer span {
+  margin-right: 0.5rem;
+}
