@@ -9,7 +9,7 @@ import City from "./pages/MasterData/City.jsx";
 import State from "./pages/MasterData/State.jsx";
 import Country from "./pages/MasterData/Country.jsx";
 import Institute from "./pages/MasterData/Institute.jsx";
-import Createinstitute from "./pages/MasterData/Createinstitute.jsx";
+// import Createinstitute from "./pages/MasterData/Createinstitute.jsx";
 import Branch from "./pages/MasterData/Branch.jsx";
 import CreateBranch from "./pages/MasterData/CreateBranch.jsx";
 import EditBranch from "./pages/MasterData/EditBranch.jsx";
@@ -69,7 +69,7 @@ function App() {
           <Route path="/master/state" element={<State />} />
           <Route path="master/country" element={<Country />} />
           <Route path="master/institute" element={<Institute />} />
-          <Route path="/institute/create" element={<Createinstitute />} />
+          {/* <Route path="/institute/create" element={<Createinstitute />} /> */}
           <Route path="master/branch" element={<Branch />} />
           <Route path="/branch/create" element={<CreateBranch />} />
           <Route path="/branch/edit/:id" element={<EditBranch />} />

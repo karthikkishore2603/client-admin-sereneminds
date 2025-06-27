@@ -1,44 +1,312 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Institute.css";
 import { FiEdit, FiFilter, FiDownload, FiMaximize2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
-const initialInstitutes = Array.from({ length: 28 }, (_, i) => ({
-  id: 951200 + i + 1,
-  name: "Example University",
-  email: "Example@gmail.com",
-  phone: "9876543210",
-  address: "Address Line 1, Address Line 2, City, State, Pincode",
-  status: i % 2 === 0,
-}));
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+const defaultForm = {
+  name: "",
+  addressLine1: "",
+  addressLine2: "",
+  city: "",
+  state: "",
+  pinCode: "",
+  phoneNumber: "",
+  telephoneNumber: "",
+  email: "",
+  website: "",
+  image: null,
+};
+
 const Institute = () => {
-  const [institutes, setInstitutes] = useState(initialInstitutes);
+  const [institutes, setInstitutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [form, setForm] = useState(defaultForm);
+  const [editId, setEditId] = useState(null);
+
   const navigate = useNavigate();
 
-  const toggleStatus = (id) => {
-    setInstitutes((insts) =>
-      insts.map((inst) =>
-        inst.id === id ? { ...inst, status: !inst.status } : inst
-      )
-    );
+  // Fetch institutes from backend
+  useEffect(() => {
+    fetchInstitutes();
+    // eslint-disable-next-line
+  }, []);
+
+  const fetchInstitutes = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/institutes`
+      );
+      if (!response.ok) throw new Error("Failed to fetch institutes");
+      const data = await response.json();
+      setInstitutes(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredInstitutes = institutes.filter((inst) =>
-    inst.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Toggle status
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/institutes/${id}/toggle-status`,
+        { method: "PATCH" }
+      );
+      if (!response.ok) throw new Error("Failed to toggle status");
+      const updatedInstitute = await response.json();
+      setInstitutes((prev) =>
+        prev.map((inst) =>
+          inst.id === updatedInstitute.id ? updatedInstitute : inst
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-  // Pagination
+  // Form handlers
+  const handleChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    setForm((prev) => ({ ...prev, image: e.target.files[0] }));
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      if (value) formData.append(key, value);
+    });
+
+    try {
+      let url = `${process.env.REACT_APP_API_BASE_URL}/institutes`;
+      let method = "POST";
+      if (isEdit && editId) {
+        url = `${url}/${editId}`;
+        method = "PUT";
+      }
+      const response = await fetch(url, {
+        method,
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.message || "Failed to save institute");
+      setShowForm(false);
+      setForm(defaultForm);
+      setIsEdit(false);
+      setEditId(null);
+      fetchInstitutes();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEdit = (inst) => {
+    setForm({
+      name: inst.name || "",
+      addressLine1: inst.addressLine1 || "",
+      addressLine2: inst.addressLine2 || "",
+      city: inst.city || "",
+      state: inst.state || "",
+      pinCode: inst.pinCode || "",
+      phoneNumber: inst.phoneNumber || "",
+      telephoneNumber: inst.telephoneNumber || "",
+      email: inst.email || "",
+      website: inst.website || "",
+      image: null,
+    });
+    setIsEdit(true);
+    setEditId(inst.id);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setForm(defaultForm);
+    setIsEdit(false);
+    setEditId(null);
+  };
+
+  // Filter and paginate
+  const filteredInstitutes = institutes.filter((inst) =>
+    inst.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   const total = filteredInstitutes.length;
   const totalPages = Math.ceil(total / pageSize);
   const startIdx = (page - 1) * pageSize;
   const endIdx = Math.min(startIdx + pageSize, total);
   const paginated = filteredInstitutes.slice(startIdx, endIdx);
+
+  if (showForm) {
+    return (
+      <div className="institute-container">
+        <h3 className="institute-heading">
+          {isEdit ? "Edit" : "Create"} Institute
+        </h3>
+        <form className="institute-form" onSubmit={handleFormSubmit}>
+          <div className="upload-section">
+            <div className="avatar" />
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+                id="file-upload"
+              />
+              <label htmlFor="file-upload">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("file-upload").click()}
+                >
+                  Upload
+                </button>
+              </label>
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, image: null }))}
+              >
+                Reset
+              </button>
+              <p>Allowed JPG, GIF or PNG. Max size of 800KB</p>
+            </div>
+          </div>
+          <fieldset className="form-section">
+            <legend>Institute</legend>
+            {isEdit && (
+              <div className="field">
+                <label>Institute Code</label>
+                <input type="text" value={editId} disabled />
+              </div>
+            )}
+            <div className="field">
+              <label>Institute Name</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                required
+              />
+            </div>
+            <div className="row">
+              <div className="field">
+                <label>Address Line 1</label>
+                <input
+                  type="text"
+                  value={form.addressLine1}
+                  onChange={(e) => handleChange("addressLine1", e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Address Line 2</label>
+                <input
+                  type="text"
+                  value={form.addressLine2}
+                  onChange={(e) => handleChange("addressLine2", e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="row">
+              <div className="field">
+                <label>City</label>
+                <select
+                  value={form.city}
+                  onChange={(e) => handleChange("city", e.target.value)}
+                >
+                  <option>City</option>
+                  <option>Chennai</option>
+                  <option>Madurai</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>State</label>
+                <select
+                  value={form.state}
+                  onChange={(e) => handleChange("state", e.target.value)}
+                >
+                  <option>Select</option>
+                  <option>Tamil Nadu</option>
+                  <option>Kerala</option>
+                </select>
+              </div>
+            </div>
+            <div className="field">
+              <label>Pin Code</label>
+              <input
+                type="text"
+                value={form.pinCode}
+                onChange={(e) => handleChange("pinCode", e.target.value)}
+              />
+            </div>
+          </fieldset>
+          <fieldset className="form-section">
+            <legend>Contact</legend>
+            <div className="row">
+              <div className="field">
+                <label>Phone Number</label>
+                <input
+                  type="text"
+                  value={form.phoneNumber}
+                  onChange={(e) => handleChange("phoneNumber", e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Telephone Number</label>
+                <input
+                  type="text"
+                  value={form.telephoneNumber}
+                  onChange={(e) =>
+                    handleChange("telephoneNumber", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+            <div className="row">
+              <div className="field">
+                <label>Email ID</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Website Link</label>
+                <input
+                  type="text"
+                  value={form.website}
+                  onChange={(e) => handleChange("website", e.target.value)}
+                />
+              </div>
+            </div>
+          </fieldset>
+          <div className="form-buttons">
+            <button type="submit" className="submit-btn">
+              {isEdit ? "Update" : "Submit"}
+            </button>
+            <button type="button" className="cancel-btn" onClick={handleCancel}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="institute-container">
@@ -70,7 +338,12 @@ const Institute = () => {
         <div className="actions">
           <button
             className="create-btn"
-            onClick={() => navigate("/institute/create")}
+            onClick={() => {
+              setShowForm(true);
+              setIsEdit(false);
+              setForm(defaultForm);
+              setEditId(null);
+            }}
           >
             + Create
           </button>
@@ -97,7 +370,7 @@ const Institute = () => {
           </tr>
         </thead>
         <tbody>
-          {paginated.map((inst, idx) => (
+          {paginated.map((inst) => (
             <tr key={inst.id}>
               <td>
                 <div className="inst-name">{inst.name}</div>
@@ -108,10 +381,13 @@ const Institute = () => {
                 <div className="inst-id">{inst.email}</div>
               </td>
               <td>
-                <div>{inst.phone}</div>
-                <div className="inst-id">{inst.phone}</div>
+                <div>{inst.phoneNumber || inst.phone}</div>
+                <div className="inst-id">{inst.phoneNumber || inst.phone}</div>
               </td>
-              <td style={{ whiteSpace: "pre-line" }}>{inst.address}</td>
+              <td style={{ whiteSpace: "pre-line" }}>
+                {inst.addressLine1 || ""} {inst.addressLine2 || ""}{" "}
+                {inst.city || ""} {inst.state || ""} {inst.pinCode || ""}
+              </td>
               <td>
                 <label className="switch">
                   <input
@@ -123,10 +399,7 @@ const Institute = () => {
                 </label>
               </td>
               <td>
-                <button
-                  className="edit-btn"
-                  onClick={() => navigate(`/institute/overview/${inst.id}`)}
-                >
+                <button className="edit-btn" onClick={() => handleEdit(inst)}>
                   <FiEdit size={16} />
                 </button>
               </td>
