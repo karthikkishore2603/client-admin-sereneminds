@@ -1,0 +1,119 @@
+.branch-form-container {
+  padding: 32px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  max-width: 900px;
+  margin: 2rem auto;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+}
+
+.branch-form-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #2c3e50;
+}
+
+.form-section {
+  border: 1px solid #eef2f5;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.form-section legend {
+  font-weight: 600;
+  font-size: 16px;
+  color: #34495e;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.branch-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.branch-form-input {
+  display: flex;
+  flex-direction: column;
+}
+
+.branch-form-input label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.branch-form-input input,
+.branch-form-input select {
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.branch-form-input input:focus,
+.branch-form-input select:focus {
+  outline: none;
+  border-color: #00c7b7;
+  box-shadow: 0 0 0 3px rgba(0, 199, 183, 0.1);
+}
+
+.branch-form-input input[disabled] {
+  background-color: #f1f3f5;
+  color: #868e96;
+  cursor: not-allowed;
+}
+
+.branch-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.submit-btn {
+  padding: 10px 24px;
+  background-color: #00c7b7;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #00b4a5;
+  transform: translateY(-2px);
+}
+
+.cancel-btn {
+  padding: 10px 24px;
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  color: #343a40;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.cancel-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* Remove section-heading as we use fieldset legends now */
+.section-heading {
+  display: none;
+}
