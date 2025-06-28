@@ -1,32 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Branch.css";
 import { FiEdit } from "react-icons/fi";
-
-const initialYears = [
-  { id: 1, year: "June - April", status: false },
-  { id: 2, year: "June - April", status: true },
-  { id: 3, year: "June - April", status: true },
-  { id: 4, year: "June - April", status: true },
-  { id: 5, year: "June - April", status: false },
-  { id: 6, year: "June - April", status: false },
-  { id: 7, year: "June - April", status: true },
-];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Academicyear = () => {
-  const [years, setYears] = useState(initialYears);
+  const [years, setYears] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [modalValue, setModalValue] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const toggleStatus = (id) => {
-    setYears((prev) =>
-      prev.map((y) => (y.id === id ? { ...y, status: !y.status } : y))
-    );
+  // Fetch academic years from API
+  const fetchAcademicYears = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/academicyears");
+      if (!response.ok) {
+        throw new Error("Failed to fetch academic years");
+      }
+      const data = await response.json();
+      setYears(data);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching academic years:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load academic years on component mount
+  useEffect(() => {
+    fetchAcademicYears();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/academicyears/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to toggle status");
+      }
+      const updatedYear = await response.json();
+      setYears((prev) => prev.map((y) => (y.id === id ? updatedYear : y)));
+    } catch (err) {
+      setError(err.message);
+      console.error("Error toggling status:", err);
+    }
   };
 
   const openCreate = () => {
@@ -42,22 +73,58 @@ const Academicyear = () => {
     setShowModal(true);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (modalValue.trim() === "") return;
-    if (editingId) {
-      setYears((prev) =>
-        prev.map((y) => (y.id === editingId ? { ...y, year: modalValue } : y))
-      );
-    } else {
-      setYears((prev) => [
-        ...prev,
-        { id: prev.length + 1, year: modalValue, status: false },
-      ]);
+
+    try {
+      setLoading(true);
+      if (editingId) {
+        // Update existing academic year
+        const response = await fetch(
+          `http://localhost:5000/api/academicyears/${editingId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ year: modalValue }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to update academic year");
+        }
+        const updatedYear = await response.json();
+        setYears((prev) =>
+          prev.map((y) => (y.id === editingId ? updatedYear : y))
+        );
+      } else {
+        // Create new academic year
+        const response = await fetch(
+          "http://localhost:5000/api/academicyears",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ year: modalValue }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to create academic year");
+        }
+        const newYear = await response.json();
+        setYears([newYear, ...years]);
+      }
+      setShowModal(false);
+      setModalValue("");
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error saving academic year:", err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setModalValue("");
-    setEditingId(null);
   };
 
   const handleModalCancel = () => {
@@ -108,39 +175,50 @@ const Academicyear = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Academic Year</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((y) => (
-            <tr key={y.id}>
-              <td>
-                <div className="branch-name">{y.year}</div>
-              </td>
-              <td>
-                <label className="switch">
-                  <input
-                    type="checkbox"
-                    checked={y.status}
-                    onChange={() => toggleStatus(y.id)}
-                  />
-                  <span className="slider round"></span>
-                </label>
-              </td>
-              <td>
-                <button className="edit-btn" onClick={() => openEdit(y.id)}>
-                  <FiEdit size={16} />
-                </button>
-              </td>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading && !showModal ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading academic years...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Academic Year</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginated.map((y) => (
+              <tr key={y.id}>
+                <td>
+                  <div className="branch-name">{y.year}</div>
+                </td>
+                <td>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={y.status}
+                      onChange={() => toggleStatus(y.id)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </td>
+                <td>
+                  <button className="edit-btn" onClick={() => openEdit(y.id)}>
+                    <FiEdit size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
@@ -198,6 +276,7 @@ const Academicyear = () => {
                   onChange={(e) => setModalValue(e.target.value)}
                   placeholder="e.g. June - April"
                   autoFocus
+                  required
                 />
               </div>
               <div
@@ -207,11 +286,12 @@ const Academicyear = () => {
                   type="button"
                   className="cancel-btn"
                   onClick={handleModalCancel}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  Submit
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading ? "Saving..." : "Submit"}
                 </button>
               </div>
             </form>
