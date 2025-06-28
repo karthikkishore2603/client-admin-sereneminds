@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./City.css";
 import { FiEdit, FiDownload, FiMaximize2, FiFilter } from "react-icons/fi";
+import axios from "axios";
 
 const City = () => {
   const [cities, setCities] = useState([]);
@@ -9,6 +10,7 @@ const City = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ country: "", state: "", city: "" });
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   // Clear errors after 5 seconds
   useEffect(() => {
@@ -22,15 +24,13 @@ const City = () => {
   useEffect(() => {
     const fetchCities = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${process.env.REACT_APP_API_BASE_URL}/cities`
         );
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
-        setCities(data);
+        setCities(response.data);
+        setLoading(false);
       } catch (err) {
         setError(err.message);
-      } finally {
         setLoading(false);
       }
     };
@@ -38,60 +38,84 @@ const City = () => {
     fetchCities();
   }, []);
 
-  // Create new city
-  const handleCreate = async () => {
+  // Create or update city
+  const handleCreateOrUpdate = async () => {
     if (!form.city || !form.state || !form.country) {
       setError("Please fill all fields");
       return;
     }
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/cities`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      if (editingId !== null) {
+        // Update existing city
+        await axios.put(
+          `${process.env.REACT_APP_API_BASE_URL}/cities/${editingId}`,
+          {
+            country: form.country,
+            state: form.state,
+            city: form.city,
+          }
+        );
+        const updated = cities.map((c) =>
+          c.id === editingId
+            ? {
+                ...c,
+                country: form.country,
+                state: form.state,
+                city: form.city,
+              }
+            : c
+        );
+        setCities(updated);
+      } else {
+        // Create new city
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_BASE_URL}/cities`,
+          {
             country: form.country,
             state: form.state,
             city: form.city,
             status: false,
-          }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to create city");
-
-      const newCity = await response.json();
-      setCities([...cities, newCity]);
+          }
+        );
+        setCities([...cities, response.data]);
+      }
       setForm({ country: "", state: "", city: "" });
       setShowModal(false);
+      setEditingId(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     }
   };
 
   // Toggle city status
   const toggleStatus = async (id) => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/cities/${id}/toggle-status`,
+      const cityToUpdate = cities.find((c) => c.id === id);
+      await axios.patch(
+        `${process.env.REACT_APP_API_BASE_URL}/cities/${id}/status`,
         {
-          method: "PATCH",
+          status: !cityToUpdate.status,
         }
       );
-
-      if (!response.ok) throw new Error("Failed to toggle status");
-
-      const updatedCity = await response.json();
-      setCities(
-        cities.map((city) => (city.id === updatedCity.id ? updatedCity : city))
+      const updated = cities.map((c) =>
+        c.id === id ? { ...c, status: !c.status } : c
       );
+      setCities(updated);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     }
+  };
+
+  // Start editing a city
+  const startEditing = (city) => {
+    setForm({
+      country: city.country,
+      state: city.state,
+      city: city.city,
+    });
+    setEditingId(city.id);
+    setShowModal(true);
   };
 
   // Filter cities based on search term
@@ -107,13 +131,16 @@ const City = () => {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h3 className="modal-title">Add New City</h3>
+            <h3 className="modal-title">
+              {editingId !== null ? "Edit City" : "Add New City"}
+            </h3>
             <input
               type="text"
               className="modal-input"
               placeholder="Country Name"
               value={form.country}
               onChange={(e) => setForm({ ...form, country: e.target.value })}
+              required
             />
             <input
               type="text"
@@ -121,6 +148,7 @@ const City = () => {
               placeholder="State Name"
               value={form.state}
               onChange={(e) => setForm({ ...form, state: e.target.value })}
+              required
             />
             <input
               type="text"
@@ -128,16 +156,21 @@ const City = () => {
               placeholder="City Name"
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
+              required
             />
             <div className="modal-actions">
               <button
                 className="modal-cancel"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setForm({ country: "", state: "", city: "" });
+                  setEditingId(null);
+                }}
               >
                 Cancel
               </button>
-              <button className="modal-submit" onClick={handleCreate}>
-                Submit
+              <button className="modal-submit" onClick={handleCreateOrUpdate}>
+                {editingId !== null ? "Update" : "Submit"}
               </button>
             </div>
           </div>
@@ -149,21 +182,35 @@ const City = () => {
           <option>10</option>
           <option>25</option>
           <option>50</option>
+          <option>100</option>
         </select>
         <input
           type="text"
           className="search-input"
-          placeholder="Search"
+          placeholder="Search cities..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <div className="actions">
-          <button className="create-btn" onClick={() => setShowModal(true)}>
+          <button
+            className="create-btn"
+            onClick={() => {
+              setForm({ country: "", state: "", city: "" });
+              setEditingId(null);
+              setShowModal(true);
+            }}
+          >
             + Create
           </button>
-          <button className="icon-btn">⏬</button>
-          <button className="icon-btn">⤢</button>
-          <button className="icon-btn">🔍</button>
+          <button className="icon-btn">
+            <FiDownload />
+          </button>
+          <button className="icon-btn">
+            <FiMaximize2 />
+          </button>
+          <button className="icon-btn">
+            <FiFilter />
+          </button>
         </div>
       </div>
 
@@ -172,6 +219,7 @@ const City = () => {
           <tr>
             <th>City Name</th>
             <th>State</th>
+            <th>Country</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
@@ -181,7 +229,8 @@ const City = () => {
             filteredCities.map((city) => (
               <tr key={city.id}>
                 <td className="city-name">{city.city}</td>
-                <td>{city.state}</td>
+                <td className="state-name">{city.state}</td>
+                <td className="country-name">{city.country}</td>
                 <td>
                   <label className="switch">
                     <input
@@ -193,7 +242,11 @@ const City = () => {
                   </label>
                 </td>
                 <td>
-                  <button className="edit-btn">
+                  <button
+                    className="edit-btn"
+                    onClick={() => startEditing(city)}
+                    title="Edit city"
+                  >
                     <FiEdit size={16} />
                   </button>
                 </td>
@@ -201,8 +254,10 @@ const City = () => {
             ))
           ) : (
             <tr>
-              <td colSpan="4" className="no-cities">
-                No cities found
+              <td colSpan="5" className="no-results">
+                {searchTerm
+                  ? "No matching cities found"
+                  : "No cities available"}
               </td>
             </tr>
           )}

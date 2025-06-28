@@ -38,13 +38,13 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="sidebar">
+    <div className="sidebar enhanced-sidebar">
       <div className="sidebar-header">
         <img
           src="/logo1.png"
           alt="Serene Minds Logo"
+          className="sidebar-logo"
         />
-       
       </div>
 
       <ul className="sidebar-list">
@@ -62,7 +62,13 @@ const Sidebar = () => {
         </li>
       </ul>
 
-      <div className="master-toggle" onClick={() => setOpenMaster(!openMaster)}>
+      <div
+        className={`master-toggle${openMaster ? " open" : ""}`}
+        onClick={() => setOpenMaster(!openMaster)}
+        tabIndex={0}
+        role="button"
+        aria-expanded={openMaster}
+      >
         <RiBuildingLine className="icon" />
         <span>Master Data</span>
         <span className="badge">{masterLinks.length}</span>
