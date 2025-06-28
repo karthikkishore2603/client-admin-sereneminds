@@ -1,16 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEdit, FiFilter, FiDownload, FiMaximize2 } from "react-icons/fi";
 import "./Branch.css";
-
-const initialBoards = Array.from({ length: 28 }, (_, i) => ({
-  id: i + 1,
-  name: "Example Board Name",
-  code: "57893145",
-  type: "National",
-  email: "Example@gmail.com",
-  status: i % 2 === 0,
-}));
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -21,43 +12,92 @@ const defaultForm = {
 };
 
 const Board = () => {
-  const [boards, setBoards] = useState(initialBoards);
+  const [boards, setBoards] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
 
-  const toggleStatus = (id) => {
-    setBoards((prev) =>
-      prev.map((board) =>
-        board.id === id ? { ...board, status: !board.status } : board
-      )
-    );
+  // Fetch boards from API
+  const fetchBoards = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/boards");
+      if (!response.ok) {
+        throw new Error("Failed to fetch boards");
+      }
+      const data = await response.json();
+      setBoards(data);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching boards:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load boards on component mount
+  useEffect(() => {
+    fetchBoards();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/boards/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to toggle status");
+      }
+      const updatedBoard = await response.json();
+      setBoards((prev) =>
+        prev.map((board) => (board.id === id ? updatedBoard : board))
+      );
+    } catch (err) {
+      setError(err.message);
+      console.error("Error toggling status:", err);
+    }
   };
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    // Add new board to list (simulate backend)
-    setBoards((prev) => [
-      {
-        id: prev.length + 1,
-        name: form.name,
-        code: Math.floor(Math.random() * 100000000).toString(),
-        type: form.type,
-        email: form.email,
-        status: true,
-      },
-      ...prev,
-    ]);
-    setForm(defaultForm);
-    setShowForm(false);
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/boards", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create board");
+      }
+      const newBoard = await response.json();
+      setBoards([newBoard, ...boards]);
+      setForm(defaultForm);
+      setShowForm(false);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error creating board:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -163,21 +203,29 @@ const Board = () => {
               </div>
             </div>
           </div>
+          {error && (
+            <div
+              style={{ color: "red", textAlign: "center", marginBottom: 16 }}
+            >
+              {error}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12 }}>
             <button
               type="submit"
+              disabled={loading}
               style={{
-                background: "#b0b0b0",
+                background: loading ? "#ccc" : "#b0b0b0",
                 color: "#fff",
                 border: "none",
                 borderRadius: 6,
                 padding: "8px 28px",
                 fontWeight: 500,
                 fontSize: 15,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Submit
+              {loading ? "Creating..." : "Submit"}
             </button>
             <button
               type="button"
@@ -244,51 +292,62 @@ const Board = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Board Name</th>
-            <th>Board Type</th>
-            <th>Email ID</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((board) => (
-            <tr key={board.id}>
-              <td>
-                <div className="branch-name">{board.name}</div>
-                <div className="branch-code">{board.code}</div>
-              </td>
-              <td>
-                <div className="branch-name">{board.type}</div>
-              </td>
-              <td>
-                <div className="branch-name">{board.email}</div>
-              </td>
-              <td>
-                <label className="switch">
-                  <input
-                    type="checkbox"
-                    checked={board.status}
-                    onChange={() => toggleStatus(board.id)}
-                  />
-                  <span className="slider round"></span>
-                </label>
-              </td>
-              <td>
-                <button
-                  className="edit-btn"
-                  onClick={() => navigate(`/board/overview/${board.id}`)}
-                >
-                  <FiEdit size={16} />
-                </button>
-              </td>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading boards...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Board Name</th>
+              <th>Board Type</th>
+              <th>Email ID</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginated.map((board) => (
+              <tr key={board.id}>
+                <td>
+                  <div className="branch-name">{board.name}</div>
+                  <div className="branch-code">{board.code}</div>
+                </td>
+                <td>
+                  <div className="branch-name">{board.type}</div>
+                </td>
+                <td>
+                  <div className="branch-name">{board.email}</div>
+                </td>
+                <td>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={board.status}
+                      onChange={() => toggleStatus(board.id)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </td>
+                <td>
+                  <button
+                    className="edit-btn"
+                    onClick={() => navigate(`/board/overview/${board.id}`)}
+                  >
+                    <FiEdit size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
