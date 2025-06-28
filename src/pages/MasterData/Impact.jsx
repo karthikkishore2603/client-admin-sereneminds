@@ -1,23 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Branch.css";
 import { FiMoreVertical } from "react-icons/fi";
 
 const IMPACT_VALUES = [1, 2, 3, 4, 5];
 
-const initialImpacts = [
-  { id: 1, value: 5, status: false },
-  { id: 2, value: 5, status: true },
-  { id: 3, value: 5, status: false },
-  { id: 4, value: 5, status: false },
-  { id: 5, value: 5, status: true },
-  { id: 6, value: 5, status: false },
-  { id: 7, value: 5, status: true },
-];
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Impact = () => {
-  const [impacts, setImpacts] = useState(initialImpacts);
+  const [impacts, setImpacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -25,11 +15,54 @@ const Impact = () => {
   const [modalType, setModalType] = useState("create"); // 'create' or 'edit'
   const [modalForm, setModalForm] = useState({ value: "" });
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const toggleStatus = (id) => {
-    setImpacts((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, status: !i.status } : i))
-    );
+  // Fetch impacts from API
+  const fetchImpacts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/impacts");
+      if (!response.ok) {
+        throw new Error("Failed to fetch impacts");
+      }
+      const data = await response.json();
+      setImpacts(data);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching impacts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load impacts on component mount
+  useEffect(() => {
+    fetchImpacts();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/impacts/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to toggle status");
+      }
+      const updatedImpact = await response.json();
+      setImpacts((prev) =>
+        prev.map((impact) => (impact.id === id ? updatedImpact : impact))
+      );
+    } catch (err) {
+      setError(err.message);
+      console.error("Error toggling status:", err);
+    }
   };
 
   const openCreate = () => {
@@ -51,28 +84,55 @@ const Impact = () => {
     setModalForm({ ...modalForm, [e.target.name]: e.target.value });
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (!modalForm.value) return;
-    if (modalType === "edit" && editingId) {
-      setImpacts((prev) =>
-        prev.map((i) =>
-          i.id === editingId ? { ...i, value: Number(modalForm.value) } : i
-        )
-      );
-    } else {
-      setImpacts((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          value: Number(modalForm.value),
-          status: false,
-        },
-      ]);
+
+    try {
+      setLoading(true);
+      if (modalType === "edit" && editingId) {
+        const response = await fetch(
+          `http://localhost:5000/api/impacts/${editingId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ value: Number(modalForm.value) }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to update impact");
+        }
+        const updatedImpact = await response.json();
+        setImpacts((prev) =>
+          prev.map((i) => (i.id === editingId ? updatedImpact : i))
+        );
+      } else {
+        const response = await fetch("http://localhost:5000/api/impacts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            value: Number(modalForm.value),
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create impact");
+        }
+        const newImpact = await response.json();
+        setImpacts([newImpact, ...impacts]);
+      }
+      setShowModal(false);
+      setModalForm({ value: "" });
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error saving impact:", err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setModalForm({ value: "" });
-    setEditingId(null);
   };
 
   const handleModalCancel = () => {
@@ -123,39 +183,50 @@ const Impact = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Impact Value</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((i) => (
-            <tr key={i.id}>
-              <td>
-                <div className="branch-name">Example Value {i.value}</div>
-              </td>
-              <td>
-                <label className="switch">
-                  <input
-                    type="checkbox"
-                    checked={i.status}
-                    onChange={() => toggleStatus(i.id)}
-                  />
-                  <span className="slider round"></span>
-                </label>
-              </td>
-              <td>
-                <button className="edit-btn" onClick={() => openEdit(i.id)}>
-                  <FiMoreVertical size={20} />
-                </button>
-              </td>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading impacts...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Impact Value</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginated.map((i) => (
+              <tr key={i.id}>
+                <td>
+                  <div className="branch-name">Impact Value {i.value}</div>
+                </td>
+                <td>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={i.status}
+                      onChange={() => toggleStatus(i.id)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </td>
+                <td>
+                  <button className="edit-btn" onClick={() => openEdit(i.id)}>
+                    <FiMoreVertical size={20} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
@@ -193,7 +264,7 @@ const Impact = () => {
                 color: "#222",
               }}
             >
-              Add Impact Value
+              {modalType === "edit" ? "Edit Impact Value" : "Add Impact Value"}
             </h3>
             <form onSubmit={handleModalSubmit}>
               <div style={{ marginBottom: 24 }}>
@@ -213,8 +284,9 @@ const Impact = () => {
                   name="value"
                   onChange={handleModalChange}
                   autoFocus
+                  required
                 >
-                  <option value="">Impact Value</option>
+                  <option value="">Select Impact Value</option>
                   {IMPACT_VALUES.map((v) => (
                     <option key={v} value={v}>
                       {v}
@@ -229,11 +301,16 @@ const Impact = () => {
                   type="button"
                   className="cancel-btn"
                   onClick={handleModalCancel}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  {modalType === "edit" ? "Update" : "Submit"}
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading
+                    ? "Saving..."
+                    : modalType === "edit"
+                    ? "Update"
+                    : "Submit"}
                 </button>
               </div>
             </form>
