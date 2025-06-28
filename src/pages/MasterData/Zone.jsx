@@ -1,76 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Branch.css";
 import { FiMoreVertical } from "react-icons/fi";
-
-const EMOTIONS = [
-  { id: 1, name: "Example Emotion", code: "57893145" },
-  { id: 2, name: "Happy", code: "12345678" },
-  { id: 3, name: "Sad", code: "87654321" },
-];
-
-const initialZones = [
-  {
-    id: 1,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 2,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 3,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 4,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 5,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 6,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-  {
-    id: 7,
-    name: "Example Zone",
-    code: "57893145",
-    emotionId: 1,
-    description: "Zone Description",
-    status: false,
-  },
-];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Zone = () => {
-  const [zones, setZones] = useState(initialZones);
+  const [zones, setZones] = useState([]);
+  const [emotions, setEmotions] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -83,11 +19,69 @@ const Zone = () => {
     emotionId: "",
   });
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const toggleStatus = (id) => {
-    setZones((prev) =>
-      prev.map((z) => (z.id === id ? { ...z, status: !z.status } : z))
-    );
+  // Fetch zones from API
+  const fetchZones = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/zones");
+      if (!response.ok) {
+        throw new Error("Failed to fetch zones");
+      }
+      const data = await response.json();
+      setZones(data);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching zones:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch emotions from API
+  const fetchEmotions = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/emotions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch emotions");
+      }
+      const data = await response.json();
+      setEmotions(data);
+    } catch (err) {
+      console.error("Error fetching emotions:", err);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchZones();
+    fetchEmotions();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/zones/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to toggle status");
+      }
+      const updatedZone = await response.json();
+      setZones((prev) =>
+        prev.map((zone) => (zone.id === id ? updatedZone : zone))
+      );
+    } catch (err) {
+      setError(err.message);
+      console.error("Error toggling status:", err);
+    }
   };
 
   const openCreate = () => {
@@ -114,38 +108,52 @@ const Zone = () => {
     setModalForm({ ...modalForm, [e.target.name]: e.target.value });
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (!modalForm.name.trim() || !modalForm.emotionId) return;
-    if (modalType === "edit" && editingId) {
-      setZones((prev) =>
-        prev.map((z) =>
-          z.id === editingId
-            ? {
-                ...z,
-                name: modalForm.name,
-                description: modalForm.description,
-                emotionId: Number(modalForm.emotionId),
-              }
-            : z
-        )
-      );
-    } else {
-      setZones((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
+
+    try {
+      setLoading(true);
+      const url =
+        modalType === "edit"
+          ? `http://localhost:5000/api/zones/${editingId}`
+          : "http://localhost:5000/api/zones";
+
+      const method = modalType === "edit" ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           name: modalForm.name,
-          code: (Math.floor(Math.random() * 90000000) + 10000000).toString(),
           description: modalForm.description,
           emotionId: Number(modalForm.emotionId),
-          status: false,
-        },
-      ]);
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${modalType} zone`);
+      }
+
+      const result = await response.json();
+
+      if (modalType === "edit") {
+        setZones((prev) => prev.map((z) => (z.id === editingId ? result : z)));
+      } else {
+        setZones([result, ...zones]);
+      }
+
+      setShowModal(false);
+      setModalForm({ code: "", name: "", description: "", emotionId: "" });
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message);
+      console.error(`Error ${modalType}ing zone:`, err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setModalForm({ code: "", name: "", description: "", emotionId: "" });
-    setEditingId(null);
   };
 
   const handleModalCancel = () => {
@@ -196,56 +204,67 @@ const Zone = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Zone Name</th>
-            <th>Emotion</th>
-            <th>Zone Description</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((z) => {
-            const emotion = EMOTIONS.find((e) => e.id === z.emotionId);
-            return (
-              <tr key={z.id}>
-                <td>
-                  <div className="branch-name">{z.name}</div>
-                  <div className="branch-code">{z.code}</div>
-                </td>
-                <td>
-                  <div className="branch-name">
-                    {emotion ? emotion.name : ""}
-                  </div>
-                  <div className="branch-code">
-                    {emotion ? emotion.code : ""}
-                  </div>
-                </td>
-                <td style={{ fontWeight: 500, fontSize: 15 }}>
-                  {z.description}
-                </td>
-                <td>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={z.status}
-                      onChange={() => toggleStatus(z.id)}
-                    />
-                    <span className="slider round"></span>
-                  </label>
-                </td>
-                <td>
-                  <button className="edit-btn" onClick={() => openEdit(z.id)}>
-                    <FiMoreVertical size={20} />
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading zones...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Zone Name</th>
+              <th>Emotion</th>
+              <th>Zone Description</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map((z) => {
+              const emotion = z.emotion; // Emotion data comes from API
+              return (
+                <tr key={z.id}>
+                  <td>
+                    <div className="branch-name">{z.name}</div>
+                    <div className="branch-code">{z.code}</div>
+                  </td>
+                  <td>
+                    <div className="branch-name">
+                      {emotion ? emotion.name : ""}
+                    </div>
+                    <div className="branch-code">
+                      {emotion ? emotion.code : ""}
+                    </div>
+                  </td>
+                  <td style={{ fontWeight: 500, fontSize: 15 }}>
+                    {z.description}
+                  </td>
+                  <td>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={z.status}
+                        onChange={() => toggleStatus(z.id)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button className="edit-btn" onClick={() => openEdit(z.id)}>
+                      <FiMoreVertical size={20} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
@@ -283,7 +302,7 @@ const Zone = () => {
                 color: "#222",
               }}
             >
-              {modalType === "edit" ? "Edit Zone" : "Add New Emotion"}
+              {modalType === "edit" ? "Edit Zone" : "Add New Zone"}
             </h3>
             <form onSubmit={handleModalSubmit}>
               {modalType === "edit" && (
@@ -363,7 +382,7 @@ const Zone = () => {
                   onChange={handleModalChange}
                 >
                   <option value="">Emotion Name</option>
-                  {EMOTIONS.map((e) => (
+                  {emotions.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.name}
                     </option>
@@ -394,8 +413,12 @@ const Zone = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  {modalType === "edit" ? "Update" : "Submit"}
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading
+                    ? "Processing..."
+                    : modalType === "edit"
+                    ? "Update"
+                    : "Submit"}
                 </button>
               </div>
             </form>
