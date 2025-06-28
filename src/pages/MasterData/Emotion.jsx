@@ -1,64 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Branch.css";
 import { FiMoreVertical, FiEdit } from "react-icons/fi";
-
-const initialEmotions = [
-  {
-    id: 1,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 2,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 3,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 4,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 5,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 6,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-  {
-    id: 7,
-    name: "Example Emotion",
-    code: "57893145",
-    score: 75,
-    status: false,
-  },
-];
 
 const EMOTION_SCORES = [50, 60, 70, 75, 80, 90, 100];
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Emotion = () => {
-  const [emotions, setEmotions] = useState(initialEmotions);
+  const [emotions, setEmotions] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -66,11 +14,54 @@ const Emotion = () => {
   const [modalType, setModalType] = useState("create"); // 'create' or 'edit'
   const [modalForm, setModalForm] = useState({ code: "", name: "", score: "" });
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const toggleStatus = (id) => {
-    setEmotions((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: !e.status } : e))
-    );
+  // Fetch emotions from API
+  const fetchEmotions = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/emotions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch emotions");
+      }
+      const data = await response.json();
+      setEmotions(data);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching emotions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load emotions on component mount
+  useEffect(() => {
+    fetchEmotions();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/emotions/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to toggle status");
+      }
+      const updatedEmotion = await response.json();
+      setEmotions((prev) =>
+        prev.map((e) => (e.id === id ? updatedEmotion : e))
+      );
+    } catch (err) {
+      setError(err.message);
+      console.error("Error toggling status:", err);
+    }
   };
 
   const openCreate = () => {
@@ -96,32 +87,64 @@ const Emotion = () => {
     setModalForm({ ...modalForm, [e.target.name]: e.target.value });
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (!modalForm.name.trim() || !modalForm.score) return;
-    if (modalType === "edit" && editingId) {
-      setEmotions((prev) =>
-        prev.map((e) =>
-          e.id === editingId
-            ? { ...e, name: modalForm.name, score: Number(modalForm.score) }
-            : e
-        )
-      );
-    } else {
-      setEmotions((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          name: modalForm.name,
-          code: (Math.floor(Math.random() * 90000000) + 10000000).toString(),
-          score: Number(modalForm.score),
-          status: false,
-        },
-      ]);
+
+    try {
+      setLoading(true);
+      setError("");
+
+      if (modalType === "edit" && editingId) {
+        // Update existing emotion
+        const response = await fetch(
+          `http://localhost:5000/api/emotions/${editingId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: modalForm.name,
+              score: Number(modalForm.score),
+            }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to update emotion");
+        }
+        const updatedEmotion = await response.json();
+        setEmotions((prev) =>
+          prev.map((e) => (e.id === editingId ? updatedEmotion : e))
+        );
+      } else {
+        // Create new emotion
+        const response = await fetch("http://localhost:5000/api/emotions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: modalForm.name,
+            code: (Math.floor(Math.random() * 90000000) + 10000000).toString(),
+            score: Number(modalForm.score),
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create emotion");
+        }
+        const newEmotion = await response.json();
+        setEmotions([newEmotion, ...emotions]);
+      }
+      setShowModal(false);
+      setModalForm({ code: "", name: "", score: "" });
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error saving emotion:", err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setModalForm({ code: "", name: "", score: "" });
-    setEditingId(null);
   };
 
   const handleModalCancel = () => {
@@ -172,42 +195,53 @@ const Emotion = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Emotion Name</th>
-            <th>Emotion Score</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((e) => (
-            <tr key={e.id}>
-              <td>
-                <div className="branch-name">{e.name}</div>
-                <div className="branch-code">{e.code}</div>
-              </td>
-              <td style={{ fontWeight: 600, fontSize: 15 }}>{e.score}</td>
-              <td>
-                <label className="switch">
-                  <input
-                    type="checkbox"
-                    checked={e.status}
-                    onChange={() => toggleStatus(e.id)}
-                  />
-                  <span className="slider round"></span>
-                </label>
-              </td>
-              <td>
-                <button className="edit-btn" onClick={() => openEdit(e.id)}>
-                  <FiMoreVertical size={20} />
-                </button>
-              </td>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading && !showModal ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading emotions...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Emotion Name</th>
+              <th>Emotion Score</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginated.map((e) => (
+              <tr key={e.id}>
+                <td>
+                  <div className="branch-name">{e.name}</div>
+                  <div className="branch-code">{e.code}</div>
+                </td>
+                <td style={{ fontWeight: 600, fontSize: 15 }}>{e.score}</td>
+                <td>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={e.status}
+                      onChange={() => toggleStatus(e.id)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </td>
+                <td>
+                  <button className="edit-btn" onClick={() => openEdit(e.id)}>
+                    <FiMoreVertical size={20} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
@@ -320,11 +354,16 @@ const Emotion = () => {
                   type="button"
                   className="cancel-btn"
                   onClick={handleModalCancel}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  {modalType === "edit" ? "Update" : "Submit"}
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading
+                    ? "Saving..."
+                    : modalType === "edit"
+                    ? "Update"
+                    : "Submit"}
                 </button>
               </div>
             </form>
