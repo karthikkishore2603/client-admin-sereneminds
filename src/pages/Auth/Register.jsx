@@ -1,27 +1,26 @@
 import React, { useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "./Auth.css";
 
-const Login = () => {
+const Register = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
-    rememberMe: false,
+    confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -33,6 +32,10 @@ const Login = () => {
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -41,6 +44,14 @@ const Login = () => {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     setErrors(newErrors);
@@ -56,12 +67,13 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          name: formData.name,
           email: formData.email,
           password: formData.password,
         }),
@@ -70,17 +82,13 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Use the login function from AuthContext
         login(data.data.user, data.data.token);
-
-        // Redirect to the intended page or dashboard
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
+        navigate("/dashboard");
       } else {
-        setErrors({ submit: data.message || "Login failed" });
+        setErrors({ submit: data.message || "Registration failed" });
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Registration error:", error);
       setErrors({ submit: "Network error. Please try again." });
     } finally {
       setLoading(false);
@@ -90,7 +98,7 @@ const Login = () => {
   return (
     <div className="auth-container">
       <div className="auth-illustration">
-        <img src="/login.jpg" alt="Login Illustration" />
+        <img src="/login.jpg" alt="Register Illustration" />
       </div>
       <div className="auth-form-section">
         <div className="auth-logo">
@@ -101,72 +109,77 @@ const Login = () => {
           />
         </div>
         <h2>
-          Welcome to Serene Minds!{" "}
+          Create Account{" "}
           <span role="img" aria-label="wave">
-            👋🏻
+            🚀
           </span>
         </h2>
-        <p>Please sign-in to your account and start the adventure</p>
+        <p>Join Serene Minds and start your journey</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <label>Full Name</label>
+          <input
+            type="text"
+            name="name"
+            placeholder="Enter your full name"
+            value={formData.name}
+            onChange={handleChange}
+            className={errors.name ? "error" : ""}
+          />
+          {errors.name && <span className="error-message">{errors.name}</span>}
+
           <label>Email</label>
           <input
             type="email"
             name="email"
-            placeholder="Example@gmail.com"
+            placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
             className={errors.email ? "error" : ""}
-            required
           />
           {errors.email && (
             <span className="error-message">{errors.email}</span>
           )}
 
-          <div className="auth-form-row">
-            <label>Password</label>
-            <Link to="/forgot-password" className="auth-link">
-              Forgot Password?
-            </Link>
-          </div>
+          <label>Password</label>
           <input
             type="password"
             name="password"
-            placeholder="Password"
+            placeholder="Create a password"
             value={formData.password}
             onChange={handleChange}
             className={errors.password ? "error" : ""}
-            required
           />
           {errors.password && (
             <span className="error-message">{errors.password}</span>
           )}
 
-          <div className="auth-form-row">
-            <label>
-              <input
-                type="checkbox"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-              />{" "}
-              Remember Me
-            </label>
-          </div>
+          <label>Confirm Password</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            placeholder="Confirm your password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            className={errors.confirmPassword ? "error" : ""}
+          />
+          {errors.confirmPassword && (
+            <span className="error-message">{errors.confirmPassword}</span>
+          )}
 
           {errors.submit && (
             <span className="error-message">{errors.submit}</span>
           )}
 
           <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? "Signing In..." : "Login"}
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
         <div className="auth-footer">
-          <span>New on our platform?</span>
-          <Link to="/register" className="auth-link">
-            Create an account
+          <span>Already have an account?</span>
+          <Link to="/login" className="auth-link">
+            Sign in
           </Link>
         </div>
       </div>
@@ -174,4 +187,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

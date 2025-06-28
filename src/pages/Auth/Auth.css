@@ -67,9 +67,10 @@
 }
 
 .auth-form input[type="email"],
-.auth-form input[type="password"] {
+.auth-form input[type="password"],
+.auth-form input[type="text"] {
   padding: 0.7rem 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   font-size: 1rem;
@@ -79,8 +80,29 @@
 }
 
 .auth-form input[type="email"]:focus,
-.auth-form input[type="password"]:focus {
+.auth-form input[type="password"]:focus,
+.auth-form input[type="text"]:focus {
   border: 1.5px solid #1cc5b7;
+}
+
+.auth-form input[type="email"].error,
+.auth-form input[type="password"].error,
+.auth-form input[type="text"].error {
+  border: 1.5px solid #e74c3c;
+  background: #fdf2f2;
+}
+
+.auth-form input[type="email"].error:focus,
+.auth-form input[type="password"].error:focus,
+.auth-form input[type="text"].error:focus {
+  border: 1.5px solid #e74c3c;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  display: block;
 }
 
 .auth-form-row {
@@ -116,8 +138,13 @@
   transition: background 0.2s;
 }
 
-.auth-btn:hover {
+.auth-btn:hover:not(:disabled) {
   background: #179e91;
+}
+
+.auth-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .auth-footer {
