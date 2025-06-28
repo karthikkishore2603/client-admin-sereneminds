@@ -6,7 +6,7 @@ import {
   MdOutlineKeyboardArrowRight,
 } from "react-icons/md";
 import { FiHome } from "react-icons/fi";
-import { BsCircle } from "react-icons/bs";
+import { BsBarChart, BsGraphUp } from "react-icons/bs"; // Add BsGraphUp
 import { RiBuildingLine } from "react-icons/ri";
 import { IoRemoveCircleOutline } from "react-icons/io5";
 
@@ -40,11 +40,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar enhanced-sidebar">
       <div className="sidebar-header">
-        <img
-          src="/logo.png"
-          alt="Serene Minds Logo"
-          className="sidebar-logo"
-        />
+        <img src="/logo.png" alt="Serene Minds Logo" className="sidebar-logo" />
       </div>
 
       <ul className="sidebar-list">
@@ -53,11 +49,11 @@ const Sidebar = () => {
           <Link to="/">Dashboard</Link>
         </li>
         <li className={isActive("/reports") ? "active" : ""}>
-          <BsCircle className="icon" />
+          <BsBarChart className="icon" />
           <Link to="/reports">Reports</Link>
         </li>
         <li className={isActive("/graph") ? "active" : ""}>
-          <BsCircle className="icon" />
+          <BsGraphUp className="icon" /> {/* Changed to BsGraphUp */}
           <Link to="/graph">Graph</Link>
         </li>
       </ul>

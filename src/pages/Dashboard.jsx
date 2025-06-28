@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import CountUp from "react-countup";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -11,6 +12,7 @@ const Dashboard = () => {
     {
       title: "Students Monitored",
       value: "2,847",
+      numericValue: 2847,
       change: "+12.5%",
       icon: "👥",
       color: "#2ad2c9",
@@ -21,6 +23,7 @@ const Dashboard = () => {
     {
       title: "Positive Mood",
       value: "1,923",
+      numericValue: 1923,
       change: "+18.2%",
       icon: "😊",
       color: "#10b981",
@@ -31,6 +34,7 @@ const Dashboard = () => {
     {
       title: "Needs Attention",
       value: "324",
+      numericValue: 324,
       change: "-8.5%",
       icon: "😔",
       color: "#f59e0b",
@@ -41,6 +45,7 @@ const Dashboard = () => {
     {
       title: "Critical Cases",
       value: "42",
+      numericValue: 42,
       change: "-15.3%",
       icon: "🚨",
       color: "#ef4444",
@@ -300,7 +305,14 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="stat-main">
-                <h3>{stat.value}</h3>
+                <h3>
+                  <CountUp
+                    start={0}
+                    end={stat.numericValue}
+                    duration={2}
+                    separator=","
+                  />
+                </h3>
                 <p>{stat.title}</p>
                 <span className="stat-detail">{stat.detail}</span>
               </div>

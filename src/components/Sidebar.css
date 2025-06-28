@@ -9,11 +9,16 @@
 }
 
 .enhanced-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-width: 240px;
+  max-width: 260px;
   background: #fff;
-  box-shadow: 2px 0 16px 0 rgba(44, 62, 80, 0.04);
-  border-right: 1px solid #e5e7eb;
-  min-width: 260px;
-  transition: box-shadow 0.2s;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
@@ -44,7 +49,7 @@
 .sidebar-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 24px 0;
+  margin: 0 0 8px 0;
 }
 
 .sidebar-list li {
