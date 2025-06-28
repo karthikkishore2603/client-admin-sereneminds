@@ -41,7 +41,7 @@ const Sidebar = () => {
     <div className="sidebar enhanced-sidebar">
       <div className="sidebar-header">
         <img
-          src="/logo1.png"
+          src="/logo.png"
           alt="Serene Minds Logo"
           className="sidebar-logo"
         />

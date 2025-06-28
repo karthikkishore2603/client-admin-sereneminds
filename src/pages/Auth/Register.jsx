@@ -103,7 +103,7 @@ const Register = () => {
       <div className="auth-form-section">
         <div className="auth-logo">
           <img
-            src="/logo1.png"
+            src="/logo.png"
             alt="Serene Minds Logo"
             style={{ height: "32px", verticalAlign: "middle" }}
           />
