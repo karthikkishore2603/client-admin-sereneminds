@@ -25,7 +25,7 @@ import BoardCreate from "./pages/MasterData/BoardCreate.jsx";
 import BoardEdit from "./pages/MasterData/BoardEdit.jsx";
 import ClassPage from "./pages/MasterData/Class.jsx";
 import ClassOverview from "./pages/MasterData/ClassOverview.jsx";
-import ClassCreate from "./pages/MasterData/ClassCreate.jsx";
+// import ClassCreate from "./pages/MasterData/ClassCreate.jsx";
 import ClassEdit from "./pages/MasterData/ClassEdit.jsx";
 import Division from "./pages/MasterData/Division";
 import DivisionOverview from "./pages/MasterData/DivisionOverview";
@@ -88,7 +88,7 @@ function App() {
           <Route path="/board/edit/:id" element={<BoardEdit />} />
           <Route path="/master/class" element={<ClassPage />} />
           <Route path="/class/overview/:id" element={<ClassOverview />} />
-          <Route path="/class/create" element={<ClassCreate />} />
+          {/* <Route path="/class/create" element={<ClassCreate />} /> */}
           <Route path="/class/edit/:id" element={<ClassEdit />} />
           <Route path="/master/division" element={<Division />} />
           <Route path="/division/overview/:id" element={<DivisionOverview />} />
