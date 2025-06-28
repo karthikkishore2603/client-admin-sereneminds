@@ -1,68 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Branch.css";
 import { FiMoreVertical } from "react-icons/fi";
-
-const CATEGORIES = [
-  { id: 1, name: "Example Category", code: "951203" },
-  { id: 2, name: "Another Category", code: "123456" },
-];
-
-const initialSubCategories = [
-  {
-    id: 1,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 2,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 3,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 4,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 5,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 6,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-  {
-    id: 7,
-    name: "Example Sub Category",
-    code: "57893145",
-    categoryId: 1,
-    status: false,
-  },
-];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const SubCategory = () => {
-  const [subCategories, setSubCategories] = useState(initialSubCategories);
+  const [subCategories, setSubCategories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -74,11 +18,55 @@ const SubCategory = () => {
     categoryId: "",
   });
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const toggleStatus = (id) => {
-    setSubCategories((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: !s.status } : s))
-    );
+  // Fetch categories and subcategories from API
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/categories");
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      const data = await response.json();
+      setCategories(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const fetchSubCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("http://localhost:5000/api/subcategories");
+      if (!response.ok) throw new Error("Failed to fetch subcategories");
+      const data = await response.json();
+      setSubCategories(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchSubCategories();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/subcategories/${id}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to toggle status");
+      const updated = await response.json();
+      setSubCategories((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const openCreate = () => {
@@ -104,36 +92,55 @@ const SubCategory = () => {
     setModalForm({ ...modalForm, [e.target.name]: e.target.value });
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (!modalForm.name.trim() || !modalForm.categoryId) return;
-    if (modalType === "edit" && editingId) {
-      setSubCategories((prev) =>
-        prev.map((s) =>
-          s.id === editingId
-            ? {
-                ...s,
-                name: modalForm.name,
-                categoryId: Number(modalForm.categoryId),
-              }
-            : s
-        )
-      );
-    } else {
-      setSubCategories((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          name: modalForm.name,
-          code: (Math.floor(Math.random() * 90000000) + 10000000).toString(),
-          categoryId: Number(modalForm.categoryId),
-          status: false,
-        },
-      ]);
+    try {
+      setLoading(true);
+      if (modalType === "edit" && editingId) {
+        const response = await fetch(
+          `http://localhost:5000/api/subcategories/${editingId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: modalForm.name,
+              categoryId: Number(modalForm.categoryId),
+            }),
+          }
+        );
+        if (!response.ok) throw new Error("Failed to update subcategory");
+        const updated = await response.json();
+        setSubCategories((prev) =>
+          prev.map((s) => (s.id === editingId ? updated : s))
+        );
+      } else {
+        const response = await fetch(
+          "http://localhost:5000/api/subcategories",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: modalForm.name,
+              code: (
+                Math.floor(Math.random() * 90000000) + 10000000
+              ).toString(),
+              categoryId: Number(modalForm.categoryId),
+            }),
+          }
+        );
+        if (!response.ok) throw new Error("Failed to create subcategory");
+        const created = await response.json();
+        setSubCategories([created, ...subCategories]);
+      }
+      setShowModal(false);
+      setModalForm({ code: "", name: "", categoryId: "" });
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setModalForm({ code: "", name: "", categoryId: "" });
-    setEditingId(null);
   };
 
   const handleModalCancel = () => {
@@ -184,52 +191,63 @@ const SubCategory = () => {
           </button>
         </div>
       </div>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Category Name</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((s) => {
-            const category = CATEGORIES.find((c) => c.id === s.categoryId);
-            return (
-              <tr key={s.id}>
-                <td>
-                  <div className="branch-name">{s.name}</div>
-                  <div className="branch-code">{s.code}</div>
-                </td>
-                <td>
-                  <div className="branch-name">
-                    {category ? category.name : ""}
-                  </div>
-                  <div className="branch-code">
-                    {category ? category.code : ""}
-                  </div>
-                </td>
-                <td>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={s.status}
-                      onChange={() => toggleStatus(s.id)}
-                    />
-                    <span className="slider round"></span>
-                  </label>
-                </td>
-                <td>
-                  <button className="edit-btn" onClick={() => openEdit(s.id)}>
-                    <FiMoreVertical size={20} />
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {error && (
+        <div style={{ color: "red", textAlign: "center", marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          Loading subcategories...
+        </div>
+      ) : (
+        <table className="branch-table">
+          <thead>
+            <tr>
+              <th>Sub Category Name</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map((s) => {
+              const category = categories.find((c) => c.id === s.categoryId);
+              return (
+                <tr key={s.id}>
+                  <td>
+                    <div className="branch-name">{s.name}</div>
+                    <div className="branch-code">{s.code}</div>
+                  </td>
+                  <td>
+                    <div className="branch-name">
+                      {category ? category.name : ""}
+                    </div>
+                    <div className="branch-code">
+                      {category ? category.code : ""}
+                    </div>
+                  </td>
+                  <td>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={s.status}
+                        onChange={() => toggleStatus(s.id)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button className="edit-btn" onClick={() => openEdit(s.id)}>
+                      <FiMoreVertical size={20} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
       <div className="branch-footer">
         <div className="footer-text">
           Showing {total === 0 ? 0 : startIdx + 1} to {endIdx} of {total}{" "}
@@ -267,7 +285,7 @@ const SubCategory = () => {
                 color: "#222",
               }}
             >
-              Add Category
+              {modalType === "edit" ? "Edit Sub Category" : "Add Sub Category"}
             </h3>
             <form onSubmit={handleModalSubmit}>
               {modalType === "edit" && (
@@ -308,6 +326,7 @@ const SubCategory = () => {
                   onChange={handleModalChange}
                   placeholder="Sub Category Name"
                   autoFocus
+                  required
                 />
               </div>
               <div style={{ marginBottom: 24 }}>
@@ -326,9 +345,10 @@ const SubCategory = () => {
                   value={modalForm.categoryId}
                   name="categoryId"
                   onChange={handleModalChange}
+                  required
                 >
                   <option value="">Category Name</option>
-                  {CATEGORIES.map((c) => (
+                  {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -342,11 +362,16 @@ const SubCategory = () => {
                   type="button"
                   className="cancel-btn"
                   onClick={handleModalCancel}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  {modalType === "edit" ? "Update" : "Submit"}
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading
+                    ? "Saving..."
+                    : modalType === "edit"
+                    ? "Update"
+                    : "Submit"}
                 </button>
               </div>
             </form>
