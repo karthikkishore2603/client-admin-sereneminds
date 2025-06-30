@@ -100,7 +100,6 @@ const Institute = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
-  const [nextId, setNextId] = useState(6); // For generating new IDs
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -154,58 +153,52 @@ const Institute = () => {
     setForm((prev) => ({ ...prev, image: e.target.files[0] }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     try {
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        if (value) formData.append(key, value);
+      });
+
+      let response;
       if (isEdit && editId) {
-        // Update existing institute
-        setInstitutes((prev) =>
-          prev.map((inst) =>
-            inst.id === editId
-              ? {
-                  ...inst,
-                  name: form.name,
-                  addressLine1: form.addressLine1,
-                  addressLine2: form.addressLine2,
-                  city: form.city,
-                  state: form.state,
-                  pinCode: form.pinCode,
-                  phoneNumber: form.phoneNumber,
-                  telephoneNumber: form.telephoneNumber,
-                  email: form.email,
-                  website: form.website,
-                }
-              : inst
-          )
+        response = await fetch(
+          `http://localhost:5000/api/institutes/${editId}`,
+          {
+            method: "PUT",
+            body: formData,
+          }
         );
       } else {
-        // Add new institute
-        const newInstitute = {
-          id: nextId,
-          name: form.name,
-          addressLine1: form.addressLine1,
-          addressLine2: form.addressLine2,
-          city: form.city,
-          state: form.state,
-          pinCode: form.pinCode,
-          phoneNumber: form.phoneNumber,
-          telephoneNumber: form.telephoneNumber,
-          email: form.email,
-          website: form.website,
-          status: true, // Default status
-        };
-        setInstitutes((prev) => [...prev, newInstitute]);
-        setNextId((prev) => prev + 1);
+        response = await fetch("http://localhost:5000/api/institutes", {
+          method: "POST",
+          body: formData,
+        });
       }
 
-      // Reset form
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save institute");
+      }
+      const savedInstitute = await response.json();
+
+      if (isEdit) {
+        setInstitutes((prev) =>
+          prev.map((inst) => (inst.id === editId ? savedInstitute : inst))
+        );
+      } else {
+        setInstitutes((prev) => [savedInstitute, ...prev]);
+      }
+
       setShowForm(false);
       setForm(defaultForm);
       setIsEdit(false);
       setEditId(null);
     } catch (err) {
-      setError("Failed to save institute");
+      setError(err.message);
     }
   };
 
