@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "./Institute.css";
-import { FiEdit, FiFilter, FiDownload, FiMaximize2 } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import {
+  FiEdit,
+  FiFilter,
+  FiDownload,
+  FiMaximize2,
+  FiTrash2,
+  FiEye,
+} from "react-icons/fi";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -19,80 +25,6 @@ const defaultForm = {
   image: null,
 };
 
-// Sample institute data
-const sampleInstitutes = [
-  {
-    id: 1,
-    name: "Anna University",
-    addressLine1: "Sardar Patel Road",
-    addressLine2: "Guindy",
-    city: "Chennai",
-    state: "Tamil Nadu",
-    pinCode: "600025",
-    phoneNumber: "9876543210",
-    telephoneNumber: "044-22203456",
-    email: "info@annauniv.edu",
-    website: "https://www.annauniv.edu",
-    status: true,
-  },
-  {
-    id: 2,
-    name: "IIT Madras",
-    addressLine1: "IIT P.O.",
-    addressLine2: "Adyar",
-    city: "Chennai",
-    state: "Tamil Nadu",
-    pinCode: "600036",
-    phoneNumber: "9123456789",
-    telephoneNumber: "044-22574000",
-    email: "office@iitm.ac.in",
-    website: "https://www.iitm.ac.in",
-    status: true,
-  },
-  {
-    id: 3,
-    name: "Madurai Kamaraj University",
-    addressLine1: "Palkalaiperur",
-    addressLine2: "",
-    city: "Madurai",
-    state: "Tamil Nadu",
-    pinCode: "625021",
-    phoneNumber: "9876501234",
-    telephoneNumber: "0452-2458471",
-    email: "registrar@mkuniversity.org",
-    website: "https://www.mkuniversity.org",
-    status: false,
-  },
-  {
-    id: 4,
-    name: "VIT University",
-    addressLine1: "Vellore Institute of Technology",
-    addressLine2: "Katpadi",
-    city: "Vellore",
-    state: "Tamil Nadu",
-    pinCode: "632014",
-    phoneNumber: "9444556677",
-    telephoneNumber: "0416-2202020",
-    email: "info@vit.ac.in",
-    website: "https://www.vit.ac.in",
-    status: true,
-  },
-  {
-    id: 5,
-    name: "Bharathiar University",
-    addressLine1: "Marudhamalai Road",
-    addressLine2: "",
-    city: "Coimbatore",
-    state: "Tamil Nadu",
-    pinCode: "641046",
-    phoneNumber: "9988776655",
-    telephoneNumber: "0422-2428100",
-    email: "info@b-u.ac.in",
-    website: "https://www.b-u.ac.in",
-    status: true,
-  },
-];
-
 const Institute = () => {
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,15 +33,15 @@ const Institute = () => {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
-  // Form state
-  const [showForm, setShowForm] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
+  // View state: 'list', 'form', 'overview'
+  const [viewMode, setViewMode] = useState("list");
   const [form, setForm] = useState(defaultForm);
+  const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [selectedInstitute, setSelectedInstitute] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  const navigate = useNavigate();
-
-  // Load sample data on component mount
+  // Load data
   useEffect(() => {
     const fetchInstitutes = async () => {
       setLoading(true);
@@ -156,13 +88,11 @@ const Institute = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
         if (value) formData.append(key, value);
       });
-
       let response;
       if (isEdit && editId) {
         response = await fetch(
@@ -178,13 +108,11 @@ const Institute = () => {
           body: formData,
         });
       }
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to save institute");
       }
       const savedInstitute = await response.json();
-
       if (isEdit) {
         setInstitutes((prev) =>
           prev.map((inst) => (inst.id === editId ? savedInstitute : inst))
@@ -192,8 +120,7 @@ const Institute = () => {
       } else {
         setInstitutes((prev) => [savedInstitute, ...prev]);
       }
-
-      setShowForm(false);
+      setViewMode("list");
       setForm(defaultForm);
       setIsEdit(false);
       setEditId(null);
@@ -218,14 +145,43 @@ const Institute = () => {
     });
     setIsEdit(true);
     setEditId(inst.id);
-    setShowForm(true);
+    setViewMode("form");
   };
 
   const handleCancel = () => {
-    setShowForm(false);
+    setViewMode("list");
     setForm(defaultForm);
     setIsEdit(false);
     setEditId(null);
+    setSelectedInstitute(null);
+  };
+
+  // Delete
+  const handleDelete = async (id) => {
+    setError(null);
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/institutes/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to delete institute");
+      setInstitutes((prev) => prev.filter((inst) => inst.id !== id));
+      setDeleteConfirmId(null);
+      if (selectedInstitute && selectedInstitute.id === id) {
+        setViewMode("list");
+        setSelectedInstitute(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Overview
+  const handleOverview = (inst) => {
+    setSelectedInstitute(inst);
+    setViewMode("overview");
   };
 
   // Filter and paginate
@@ -241,27 +197,15 @@ const Institute = () => {
   if (loading) {
     return <div className="loading">Loading institutes...</div>;
   }
-
   if (error) {
     return <div className="error">Error: {error}</div>;
   }
 
-  if (showForm) {
+  // --- FORM VIEW ---
+  if (viewMode === "form") {
     return (
       <div className="institute-form-container">
         <div className="breadcrumb">
-          <span>
-            <svg width="16" height="16" fill="none">
-              <circle cx="8" cy="8" r="8" fill="#E0E0E0" />
-              <path
-                d="M8 4v4l2.5 2.5"
-                stroke="#888"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
           <span>Institute</span>
           <span style={{ color: "#888" }}>&gt;</span>
           <span>{isEdit ? "Edit" : "Create"}</span>
@@ -464,6 +408,185 @@ const Institute = () => {
     );
   }
 
+  // --- OVERVIEW VIEW ---
+  if (viewMode === "overview" && selectedInstitute) {
+    const inst = selectedInstitute;
+    return (
+      <div
+        className="institute-container"
+        style={{ background: "#f7f7f7", minHeight: "100vh" }}
+      >
+        <div className="breadcrumb">
+          <span>Institute</span>
+          <span style={{ color: "#888" }}>&gt;</span>
+          <span>Overview</span>
+        </div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 14,
+            padding: 28,
+            display: "flex",
+            alignItems: "center",
+            marginBottom: 24,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div
+            style={{
+              width: 70,
+              height: 70,
+              borderRadius: "50%",
+              background: "#eaeaea",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 38,
+              color: "#b0b0b0",
+              marginRight: 28,
+            }}
+          >
+            <span>👤</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: 20,
+                color: "#222",
+                marginBottom: 6,
+              }}
+            >
+              {inst.name}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 24,
+                color: "#888",
+                fontSize: 15,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <FiEdit /> {inst.email}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <FiEdit /> {inst.phoneNumber || inst.phone}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <FiEdit /> {inst.website}
+              </span>
+            </div>
+          </div>
+          <button
+            style={{
+              background: "#f5f5f5",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 18px",
+              color: "#555",
+              fontWeight: 500,
+              fontSize: 15,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: "pointer",
+            }}
+            onClick={() => handleEdit(inst)}
+          >
+            <FiEdit /> Edit
+          </button>
+        </div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            padding: 32,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: 18,
+              color: "#444",
+              marginBottom: 18,
+            }}
+          >
+            Details
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 0 }}>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Institute Name{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.name}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Phone Number{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.phoneNumber || inst.phone}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Address Line 1{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.addressLine1}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                City{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.city}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Pin Code{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.pinCode}
+                </span>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Institute Code{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.code || inst.id}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Telephone Number{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.telephoneNumber || inst.telephone}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                Address Line 2{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.addressLine2}
+                </span>
+              </div>
+              <div style={{ marginBottom: 12, color: "#888", fontSize: 15 }}>
+                State{" "}
+                <span style={{ color: "#222", fontWeight: 500 }}>
+                  : {inst.state}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="institute-form-actions" style={{ marginTop: 32 }}>
+            <button className="cancel-btn" onClick={handleCancel}>
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- LIST VIEW ---
   return (
     <div className="institute-container">
       <div className="institute-header">
@@ -495,7 +618,7 @@ const Institute = () => {
           <button
             className="create-btn"
             onClick={() => {
-              setShowForm(true);
+              setViewMode("form");
               setIsEdit(false);
               setForm(defaultForm);
               setEditId(null);
@@ -561,9 +684,27 @@ const Institute = () => {
                   <span className="slider round"></span>
                 </label>
               </td>
-              <td>
-                <button className="edit-btn" onClick={() => handleEdit(inst)}>
+              <td style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="edit-btn"
+                  title="Edit"
+                  onClick={() => handleEdit(inst)}
+                >
                   <FiEdit size={16} />
+                </button>
+                <button
+                  className="edit-btn"
+                  title="Overview"
+                  onClick={() => handleOverview(inst)}
+                >
+                  <FiEye size={16} />
+                </button>
+                <button
+                  className="edit-btn"
+                  title="Delete"
+                  onClick={() => setDeleteConfirmId(inst.id)}
+                >
+                  <FiTrash2 size={16} style={{ color: "#e74c3c" }} />
                 </button>
               </td>
             </tr>
@@ -596,6 +737,28 @@ const Institute = () => {
           </button>
         </div>
       </div>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div>Are you sure you want to delete this institute?</div>
+            <div className="modal-actions">
+              <button
+                className="cancel-btn"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="submit-btn"
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
