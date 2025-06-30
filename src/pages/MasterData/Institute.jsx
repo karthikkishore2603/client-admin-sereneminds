@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import "./Institute.css";
 import { FiEdit, FiFilter, FiDownload, FiMaximize2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import "./Institute.css";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -20,6 +19,80 @@ const defaultForm = {
   image: null,
 };
 
+// Sample institute data
+const sampleInstitutes = [
+  {
+    id: 1,
+    name: "Anna University",
+    addressLine1: "Sardar Patel Road",
+    addressLine2: "Guindy",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    pinCode: "600025",
+    phoneNumber: "9876543210",
+    telephoneNumber: "044-22203456",
+    email: "info@annauniv.edu",
+    website: "https://www.annauniv.edu",
+    status: true,
+  },
+  {
+    id: 2,
+    name: "IIT Madras",
+    addressLine1: "IIT P.O.",
+    addressLine2: "Adyar",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    pinCode: "600036",
+    phoneNumber: "9123456789",
+    telephoneNumber: "044-22574000",
+    email: "office@iitm.ac.in",
+    website: "https://www.iitm.ac.in",
+    status: true,
+  },
+  {
+    id: 3,
+    name: "Madurai Kamaraj University",
+    addressLine1: "Palkalaiperur",
+    addressLine2: "",
+    city: "Madurai",
+    state: "Tamil Nadu",
+    pinCode: "625021",
+    phoneNumber: "9876501234",
+    telephoneNumber: "0452-2458471",
+    email: "registrar@mkuniversity.org",
+    website: "https://www.mkuniversity.org",
+    status: false,
+  },
+  {
+    id: 4,
+    name: "VIT University",
+    addressLine1: "Vellore Institute of Technology",
+    addressLine2: "Katpadi",
+    city: "Vellore",
+    state: "Tamil Nadu",
+    pinCode: "632014",
+    phoneNumber: "9444556677",
+    telephoneNumber: "0416-2202020",
+    email: "info@vit.ac.in",
+    website: "https://www.vit.ac.in",
+    status: true,
+  },
+  {
+    id: 5,
+    name: "Bharathiar University",
+    addressLine1: "Marudhamalai Road",
+    addressLine2: "",
+    city: "Coimbatore",
+    state: "Tamil Nadu",
+    pinCode: "641046",
+    phoneNumber: "9988776655",
+    telephoneNumber: "0422-2428100",
+    email: "info@b-u.ac.in",
+    website: "https://www.b-u.ac.in",
+    status: true,
+  },
+];
+
 const Institute = () => {
   const [institutes, setInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +100,7 @@ const Institute = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [nextId, setNextId] = useState(6); // For generating new IDs
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -36,41 +110,35 @@ const Institute = () => {
 
   const navigate = useNavigate();
 
-  // Fetch institutes from backend
+  // Load sample data on component mount
   useEffect(() => {
+    const fetchInstitutes = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("http://localhost:5000/api/institutes");
+        if (!response.ok) throw new Error("Failed to fetch institutes");
+        const data = await response.json();
+        setInstitutes(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchInstitutes();
-    // eslint-disable-next-line
   }, []);
-
-  const fetchInstitutes = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/institutes`
-      );
-      if (!response.ok) throw new Error("Failed to fetch institutes");
-      const data = await response.json();
-      setInstitutes(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Toggle status
   const toggleStatus = async (id) => {
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/institutes/${id}/toggle-status`,
+        `http://localhost:5000/api/institutes/${id}/toggle-status`,
         { method: "PATCH" }
       );
       if (!response.ok) throw new Error("Failed to toggle status");
-      const updatedInstitute = await response.json();
+      const updated = await response.json();
       setInstitutes((prev) =>
-        prev.map((inst) =>
-          inst.id === updatedInstitute.id ? updatedInstitute : inst
-        )
+        prev.map((inst) => (inst.id === id ? updated : inst))
       );
     } catch (err) {
       setError(err.message);
@@ -86,34 +154,58 @@ const Institute = () => {
     setForm((prev) => ({ ...prev, image: e.target.files[0] }));
   };
 
-  const handleFormSubmit = async (e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (value) formData.append(key, value);
-    });
 
     try {
-      let url = `${process.env.REACT_APP_API_BASE_URL}/institutes`;
-      let method = "POST";
       if (isEdit && editId) {
-        url = `${url}/${editId}`;
-        method = "PUT";
+        // Update existing institute
+        setInstitutes((prev) =>
+          prev.map((inst) =>
+            inst.id === editId
+              ? {
+                  ...inst,
+                  name: form.name,
+                  addressLine1: form.addressLine1,
+                  addressLine2: form.addressLine2,
+                  city: form.city,
+                  state: form.state,
+                  pinCode: form.pinCode,
+                  phoneNumber: form.phoneNumber,
+                  telephoneNumber: form.telephoneNumber,
+                  email: form.email,
+                  website: form.website,
+                }
+              : inst
+          )
+        );
+      } else {
+        // Add new institute
+        const newInstitute = {
+          id: nextId,
+          name: form.name,
+          addressLine1: form.addressLine1,
+          addressLine2: form.addressLine2,
+          city: form.city,
+          state: form.state,
+          pinCode: form.pinCode,
+          phoneNumber: form.phoneNumber,
+          telephoneNumber: form.telephoneNumber,
+          email: form.email,
+          website: form.website,
+          status: true, // Default status
+        };
+        setInstitutes((prev) => [...prev, newInstitute]);
+        setNextId((prev) => prev + 1);
       }
-      const response = await fetch(url, {
-        method,
-        body: formData,
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.message || "Failed to save institute");
+
+      // Reset form
       setShowForm(false);
       setForm(defaultForm);
       setIsEdit(false);
       setEditId(null);
-      fetchInstitutes();
     } catch (err) {
-      setError(err.message);
+      setError("Failed to save institute");
     }
   };
 
@@ -152,6 +244,14 @@ const Institute = () => {
   const startIdx = (page - 1) * pageSize;
   const endIdx = Math.min(startIdx + pageSize, total);
   const paginated = filteredInstitutes.slice(startIdx, endIdx);
+
+  if (loading) {
+    return <div className="loading">Loading institutes...</div>;
+  }
+
+  if (error) {
+    return <div className="error">Error: {error}</div>;
+  }
 
   if (showForm) {
     return (
@@ -282,9 +382,11 @@ const Institute = () => {
                     value={form.city}
                     onChange={(e) => handleChange("city", e.target.value)}
                   >
-                    <option>City</option>
-                    <option>Chennai</option>
-                    <option>Madurai</option>
+                    <option value="">City</option>
+                    <option value="Chennai">Chennai</option>
+                    <option value="Madurai">Madurai</option>
+                    <option value="Coimbatore">Coimbatore</option>
+                    <option value="Vellore">Vellore</option>
                   </select>
                 </div>
                 <div className="field">
@@ -294,9 +396,10 @@ const Institute = () => {
                     value={form.state}
                     onChange={(e) => handleChange("state", e.target.value)}
                   >
-                    <option>Select</option>
-                    <option>Tamil Nadu</option>
-                    <option>Kerala</option>
+                    <option value="">Select</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Karnataka">Karnataka</option>
                   </select>
                 </div>
               </div>
@@ -445,8 +548,15 @@ const Institute = () => {
                 <div className="inst-id">{inst.phoneNumber || inst.phone}</div>
               </td>
               <td style={{ whiteSpace: "pre-line" }}>
-                {inst.addressLine1 || ""} {inst.addressLine2 || ""}{" "}
-                {inst.city || ""} {inst.state || ""} {inst.pinCode || ""}
+                {[
+                  inst.addressLine1,
+                  inst.addressLine2,
+                  inst.city,
+                  inst.state,
+                  inst.pinCode,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
               </td>
               <td>
                 <label className="switch">
