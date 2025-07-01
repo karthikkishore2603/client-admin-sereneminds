@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./Branch.css";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical, FiEdit, FiTrash2, FiEye } from "react-icons/fi";
 
 const PLEASANTNESS_VALUES = [1, 2, 3, 4, 5];
 
@@ -17,6 +17,8 @@ const Pleasantness = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [overviewPleasantness, setOverviewPleasantness] = useState(null);
 
   // Fetch pleasantness from API
   const fetchPleasantness = async () => {
@@ -153,6 +155,70 @@ const Pleasantness = () => {
   const endIdx = Math.min(startIdx + pageSize, total);
   const paginated = filteredPleasantness.slice(startIdx, endIdx);
 
+  // DELETE pleasantness
+  const handleDelete = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `http://localhost:5000/api/pleasantnesses/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to delete pleasantness");
+      }
+      setPleasantness((prev) => prev.filter((p) => p.id !== id));
+      setDeleteConfirmId(null);
+      if (overviewPleasantness && overviewPleasantness.id === id)
+        setOverviewPleasantness(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error deleting pleasantness:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Overview
+  const handleOverview = (p) => {
+    setOverviewPleasantness(p);
+  };
+
+  if (overviewPleasantness) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3
+            style={{
+              marginBottom: 24,
+              fontWeight: 600,
+              fontSize: 20,
+              color: "#222",
+            }}
+          >
+            Pleasantness Overview
+          </h3>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Pleasantness Value:</strong> {overviewPleasantness.value}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Status:</strong>{" "}
+            {overviewPleasantness.status ? "Active" : "Inactive"}
+          </div>
+          <div style={{ display: "flex", gap: 16, justifyContent: "flex-end" }}>
+            <button
+              className="cancel-btn"
+              onClick={() => setOverviewPleasantness(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="branch-container">
       <div className="branch-header">
@@ -220,9 +286,23 @@ const Pleasantness = () => {
                     <span className="slider round"></span>
                   </label>
                 </td>
-                <td>
+                <td style={{ display: "flex", gap: 8 }}>
                   <button className="edit-btn" onClick={() => openEdit(p.id)}>
-                    <FiMoreVertical size={20} />
+                    <FiEdit size={16} />
+                  </button>
+                  <button
+                    className="edit-btn"
+                    title="Overview"
+                    onClick={() => handleOverview(p)}
+                  >
+                    <FiEye size={16} />
+                  </button>
+                  <button
+                    className="edit-btn"
+                    title="Delete"
+                    onClick={() => setDeleteConfirmId(p.id)}
+                  >
+                    <FiTrash2 size={16} style={{ color: "#e74c3c" }} />
                   </button>
                 </td>
               </tr>
@@ -317,6 +397,28 @@ const Pleasantness = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div>Are you sure you want to delete this pleasantness?</div>
+            <div className="modal-actions">
+              <button
+                className="cancel-btn"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="submit-btn"
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

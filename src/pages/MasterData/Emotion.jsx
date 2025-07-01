@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./Branch.css";
-import { FiMoreVertical, FiEdit } from "react-icons/fi";
+import { FiMoreVertical, FiEdit, FiTrash2, FiEye } from "react-icons/fi";
 
 const EMOTION_SCORES = [50, 60, 70, 75, 80, 90, 100];
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -16,6 +16,8 @@ const Emotion = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [overviewEmotion, setOverviewEmotion] = useState(null);
 
   // Fetch emotions from API
   const fetchEmotions = async () => {
@@ -162,6 +164,70 @@ const Emotion = () => {
   const endIdx = Math.min(startIdx + pageSize, total);
   const paginated = filteredEmotions.slice(startIdx, endIdx);
 
+  // DELETE emotion
+  const handleDelete = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5000/api/emotions/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete emotion");
+      }
+      setEmotions((prev) => prev.filter((e) => e.id !== id));
+      setDeleteConfirmId(null);
+      if (overviewEmotion && overviewEmotion.id === id)
+        setOverviewEmotion(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error deleting emotion:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Overview
+  const handleOverview = (emotion) => {
+    setOverviewEmotion(emotion);
+  };
+
+  if (overviewEmotion) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3
+            style={{
+              marginBottom: 24,
+              fontWeight: 600,
+              fontSize: 20,
+              color: "#222",
+            }}
+          >
+            Emotion Overview
+          </h3>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Emotion Name:</strong> {overviewEmotion.name}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Emotion Score:</strong> {overviewEmotion.score}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Status:</strong>{" "}
+            {overviewEmotion.status ? "Active" : "Inactive"}
+          </div>
+          <div style={{ display: "flex", gap: 16, justifyContent: "flex-end" }}>
+            <button
+              className="cancel-btn"
+              onClick={() => setOverviewEmotion(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="branch-container">
       <div className="branch-header">
@@ -232,9 +298,23 @@ const Emotion = () => {
                     <span className="slider round"></span>
                   </label>
                 </td>
-                <td>
+                <td style={{ display: "flex", gap: 8 }}>
                   <button className="edit-btn" onClick={() => openEdit(e.id)}>
-                    <FiMoreVertical size={20} />
+                    <FiEdit size={16} />
+                  </button>
+                  <button
+                    className="edit-btn"
+                    title="Overview"
+                    onClick={() => handleOverview(e)}
+                  >
+                    <FiEye size={16} />
+                  </button>
+                  <button
+                    className="edit-btn"
+                    title="Delete"
+                    onClick={() => setDeleteConfirmId(e.id)}
+                  >
+                    <FiTrash2 size={16} style={{ color: "#e74c3c" }} />
                   </button>
                 </td>
               </tr>
@@ -367,6 +447,28 @@ const Emotion = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div>Are you sure you want to delete this emotion?</div>
+            <div className="modal-actions">
+              <button
+                className="cancel-btn"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="submit-btn"
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

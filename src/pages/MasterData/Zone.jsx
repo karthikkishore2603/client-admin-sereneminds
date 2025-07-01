@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./Branch.css";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical, FiEdit, FiTrash2, FiEye } from "react-icons/fi";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -11,7 +11,7 @@ const Zone = () => {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState("create"); // 'create' or 'edit'
+  const [modalType, setModalType] = useState("create"); // 'create' or 'edit' or 'overview'
   const [modalForm, setModalForm] = useState({
     code: "",
     name: "",
@@ -21,6 +21,8 @@ const Zone = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [overviewZone, setOverviewZone] = useState(null);
 
   // Fetch zones from API
   const fetchZones = async () => {
@@ -171,6 +173,73 @@ const Zone = () => {
   const endIdx = Math.min(startIdx + pageSize, total);
   const paginated = filteredZones.slice(startIdx, endIdx);
 
+  // DELETE zone
+  const handleDelete = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5000/api/zones/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete zone");
+      }
+      setZones((prev) => prev.filter((z) => z.id !== id));
+      setDeleteConfirmId(null);
+      if (overviewZone && overviewZone.id === id) setOverviewZone(null);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error deleting zone:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Overview
+  const handleOverview = (zone) => {
+    setOverviewZone(zone);
+  };
+
+  if (overviewZone) {
+    return (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3
+            style={{
+              marginBottom: 24,
+              fontWeight: 600,
+              fontSize: 20,
+              color: "#222",
+            }}
+          >
+            Zone Overview
+          </h3>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Zone Name:</strong> {overviewZone.name}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Zone Description:</strong> {overviewZone.description}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Emotion:</strong>{" "}
+            {overviewZone.emotion ? overviewZone.emotion.name : ""}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Status:</strong>{" "}
+            {overviewZone.status ? "Active" : "Inactive"}
+          </div>
+          <div style={{ display: "flex", gap: 16, justifyContent: "flex-end" }}>
+            <button
+              className="cancel-btn"
+              onClick={() => setOverviewZone(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="branch-container">
       <div className="branch-header">
@@ -254,9 +323,23 @@ const Zone = () => {
                       <span className="slider round"></span>
                     </label>
                   </td>
-                  <td>
+                  <td style={{ display: "flex", gap: 8 }}>
                     <button className="edit-btn" onClick={() => openEdit(z.id)}>
-                      <FiMoreVertical size={20} />
+                      <FiEdit size={16} />
+                    </button>
+                    <button
+                      className="edit-btn"
+                      title="Overview"
+                      onClick={() => handleOverview(z)}
+                    >
+                      <FiEye size={16} />
+                    </button>
+                    <button
+                      className="edit-btn"
+                      title="Delete"
+                      onClick={() => setDeleteConfirmId(z.id)}
+                    >
+                      <FiTrash2 size={16} style={{ color: "#e74c3c" }} />
                     </button>
                   </td>
                 </tr>
@@ -422,6 +505,28 @@ const Zone = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div>Are you sure you want to delete this zone?</div>
+            <div className="modal-actions">
+              <button
+                className="cancel-btn"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="submit-btn"
+                onClick={() => handleDelete(deleteConfirmId)}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
