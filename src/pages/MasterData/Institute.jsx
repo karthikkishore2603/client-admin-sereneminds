@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "./Institute.css";
 import {
   FiEdit,
@@ -23,11 +23,47 @@ const defaultForm = {
   email: "",
   website: "",
   image: null,
+  status: true,
 };
 
+const initialInstitutes = [
+  {
+    id: "INST001",
+    name: "SerenMinds Institute",
+    addressLine1: "123 Main St",
+    addressLine2: "Suite 101",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    pinCode: "600001",
+    phoneNumber: "9876543210",
+    telephoneNumber: "044-1234567",
+    email: "info@serenminds.com",
+    website: "https://serenminds.com",
+    status: true,
+    image: null,
+    code: "SMI001",
+  },
+  {
+    id: "INST002",
+    name: "Mindful Academy",
+    addressLine1: "456 Park Ave",
+    addressLine2: "",
+    city: "Madurai",
+    state: "Tamil Nadu",
+    pinCode: "625001",
+    phoneNumber: "9123456780",
+    telephoneNumber: "0452-7654321",
+    email: "contact@mindfulacademy.com",
+    website: "https://mindfulacademy.com",
+    status: false,
+    image: null,
+    code: "MA002",
+  },
+];
+
 const Institute = () => {
-  const [institutes, setInstitutes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [institutes, setInstitutes] = useState(initialInstitutes);
+  const [loading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
@@ -41,39 +77,13 @@ const Institute = () => {
   const [selectedInstitute, setSelectedInstitute] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  // Load data
-  useEffect(() => {
-    const fetchInstitutes = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch("http://localhost:5000/api/institutes");
-        if (!response.ok) throw new Error("Failed to fetch institutes");
-        const data = await response.json();
-        setInstitutes(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInstitutes();
-  }, []);
-
   // Toggle status
-  const toggleStatus = async (id) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/institutes/${id}/toggle-status`,
-        { method: "PATCH" }
-      );
-      if (!response.ok) throw new Error("Failed to toggle status");
-      const updated = await response.json();
-      setInstitutes((prev) =>
-        prev.map((inst) => (inst.id === id ? updated : inst))
-      );
-    } catch (err) {
-      setError(err.message);
-    }
+  const toggleStatus = (id) => {
+    setInstitutes((prev) =>
+      prev.map((inst) =>
+        inst.id === id ? { ...inst, status: !inst.status } : inst
+      )
+    );
   };
 
   // Form handlers
@@ -85,48 +95,35 @@ const Institute = () => {
     setForm((prev) => ({ ...prev, image: e.target.files[0] }));
   };
 
-  const handleFormSubmit = async (e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
     setError(null);
-    try {
-      const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
-        if (value) formData.append(key, value);
-      });
-      let response;
-      if (isEdit && editId) {
-        response = await fetch(
-          `http://localhost:5000/api/institutes/${editId}`,
-          {
-            method: "PUT",
-            body: formData,
-          }
-        );
-      } else {
-        response = await fetch("http://localhost:5000/api/institutes", {
-          method: "POST",
-          body: formData,
-        });
-      }
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save institute");
-      }
-      const savedInstitute = await response.json();
-      if (isEdit) {
-        setInstitutes((prev) =>
-          prev.map((inst) => (inst.id === editId ? savedInstitute : inst))
-        );
-      } else {
-        setInstitutes((prev) => [savedInstitute, ...prev]);
-      }
-      setViewMode("list");
-      setForm(defaultForm);
-      setIsEdit(false);
-      setEditId(null);
-    } catch (err) {
-      setError(err.message);
+    if (!form.name) {
+      setError("Institute name is required");
+      return;
     }
+    if (isEdit && editId) {
+      setInstitutes((prev) =>
+        prev.map((inst) =>
+          inst.id === editId ? { ...inst, ...form, id: editId } : inst
+        )
+      );
+    } else {
+      // Generate a new ID
+      const newId = `INST${String(institutes.length + 1).padStart(3, "0")}`;
+      setInstitutes((prev) => [
+        {
+          ...form,
+          id: newId,
+          code: `CODE${institutes.length + 1}`,
+        },
+        ...prev,
+      ]);
+    }
+    setViewMode("list");
+    setForm(defaultForm);
+    setIsEdit(false);
+    setEditId(null);
   };
 
   const handleEdit = (inst) => {
@@ -142,6 +139,7 @@ const Institute = () => {
       email: inst.email || "",
       website: inst.website || "",
       image: null,
+      status: inst.status,
     });
     setIsEdit(true);
     setEditId(inst.id);
@@ -157,24 +155,12 @@ const Institute = () => {
   };
 
   // Delete
-  const handleDelete = async (id) => {
-    setError(null);
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/institutes/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to delete institute");
-      setInstitutes((prev) => prev.filter((inst) => inst.id !== id));
-      setDeleteConfirmId(null);
-      if (selectedInstitute && selectedInstitute.id === id) {
-        setViewMode("list");
-        setSelectedInstitute(null);
-      }
-    } catch (err) {
-      setError(err.message);
+  const handleDelete = (id) => {
+    setInstitutes((prev) => prev.filter((inst) => inst.id !== id));
+    setDeleteConfirmId(null);
+    if (selectedInstitute && selectedInstitute.id === id) {
+      setViewMode("list");
+      setSelectedInstitute(null);
     }
   };
 
