@@ -1,113 +1,74 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import "./City.css";
 import { FiEdit, FiDownload, FiMaximize2, FiFilter } from "react-icons/fi";
-import axios from "axios";
+
+const API_URL = "http://localhost:5000/api/cities";
 
 const City = () => {
   const [cities, setCities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ country: "", state: "", city: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Clear errors after 5 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(timer);
+  const fetchCities = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(API_URL);
+      setCities(res.data);
+      setError("");
+    } catch (err) {
+      setError("Failed to fetch cities");
     }
-  }, [error]);
+    setLoading(false);
+  };
 
-  // Fetch cities from backend
   useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_BASE_URL}/cities`
-        );
-        setCities(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-      }
-    };
-
     fetchCities();
   }, []);
 
-  // Create or update city
   const handleCreateOrUpdate = async () => {
-    if (!form.city || !form.state || !form.country) {
-      setError("Please fill all fields");
-      return;
-    }
-
+    if (!form.city || !form.state || !form.country) return;
     try {
       if (editingId !== null) {
-        // Update existing city
-        await axios.put(
-          `${process.env.REACT_APP_API_BASE_URL}/cities/${editingId}`,
-          {
-            country: form.country,
-            state: form.state,
-            city: form.city,
-          }
-        );
-        const updated = cities.map((c) =>
-          c.id === editingId
-            ? {
-                ...c,
-                country: form.country,
-                state: form.state,
-                city: form.city,
-              }
-            : c
-        );
-        setCities(updated);
+        await axios.put(`${API_URL}/${editingId}`, form);
       } else {
-        // Create new city
-        const response = await axios.post(
-          `${process.env.REACT_APP_API_BASE_URL}/cities`,
-          {
-            country: form.country,
-            state: form.state,
-            city: form.city,
-            status: false,
-          }
-        );
-        setCities([...cities, response.data]);
+        await axios.post(API_URL, form);
       }
-      setForm({ country: "", state: "", city: "" });
+      fetchCities();
       setShowModal(false);
+      setForm({ country: "", state: "", city: "" });
       setEditingId(null);
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError("Failed to save city");
     }
   };
 
-  // Toggle city status
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this city?")) return;
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      fetchCities();
+      setError("");
+    } catch (err) {
+      setError("Failed to delete city");
+    }
+  };
+
   const toggleStatus = async (id) => {
     try {
-      const cityToUpdate = cities.find((c) => c.id === id);
-      await axios.patch(
-        `${process.env.REACT_APP_API_BASE_URL}/cities/${id}/status`,
-        {
-          status: !cityToUpdate.status,
-        }
-      );
-      const updated = cities.map((c) =>
-        c.id === id ? { ...c, status: !c.status } : c
-      );
-      setCities(updated);
+      await axios.patch(`${API_URL}/${id}/toggle-status`);
+      fetchCities();
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError("Failed to toggle status");
     }
   };
 
-  // Start editing a city
   const startEditing = (city) => {
     setForm({
       country: city.country,
@@ -118,13 +79,9 @@ const City = () => {
     setShowModal(true);
   };
 
-  // Filter cities based on search term
   const filteredCities = cities.filter((city) =>
     city.city.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  if (loading) return <div className="loading">Loading cities...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
 
   return (
     <div className="city-container">
@@ -214,55 +171,68 @@ const City = () => {
         </div>
       </div>
 
-      <table className="city-table">
-        <thead>
-          <tr>
-            <th>City Name</th>
-            <th>State</th>
-            <th>Country</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCities.length > 0 ? (
-            filteredCities.map((city) => (
-              <tr key={city.id}>
-                <td className="city-name">{city.city}</td>
-                <td className="state-name">{city.state}</td>
-                <td className="country-name">{city.country}</td>
-                <td>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={city.status}
-                      onChange={() => toggleStatus(city.id)}
-                    />
-                    <span className="slider round"></span>
-                  </label>
-                </td>
-                <td>
-                  <button
-                    className="edit-btn"
-                    onClick={() => startEditing(city)}
-                    title="Edit city"
-                  >
-                    <FiEdit size={16} />
-                  </button>
+      {error && <div className="error-message">{error}</div>}
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <table className="city-table">
+          <thead>
+            <tr>
+              <th>City Name</th>
+              <th>State</th>
+              <th>Country</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredCities.length > 0 ? (
+              filteredCities.map((city) => (
+                <tr key={city.id}>
+                  <td className="city-name">{city.city}</td>
+                  <td className="state-name">{city.state}</td>
+                  <td className="country-name">{city.country}</td>
+                  <td>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={city.status}
+                        onChange={() => toggleStatus(city.id)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button
+                      className="edit-btn"
+                      onClick={() => startEditing(city)}
+                      title="Edit city"
+                    >
+                      <FiEdit size={16} />
+                    </button>
+                    <button
+                      className="edit-btn"
+                      style={{ color: "red", marginLeft: 8 }}
+                      onClick={() => handleDelete(city.id)}
+                      title="Delete city"
+                    >
+                      &#10006;
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="no-results">
+                  {searchTerm
+                    ? "No matching cities found"
+                    : "No cities available"}
                 </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5" className="no-results">
-                {searchTerm
-                  ? "No matching cities found"
-                  : "No cities available"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

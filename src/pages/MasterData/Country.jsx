@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import "./Country.css";
 import { FiEdit, FiDownload, FiMaximize2, FiFilter } from "react-icons/fi";
-import axios from "axios";
+
+const API_URL = "http://localhost:5000/api/countries";
 
 const Country = () => {
   const [countries, setCountries] = useState([]);
@@ -9,77 +11,64 @@ const Country = () => {
   const [form, setForm] = useState({ countryName: "", status: false });
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Fetch countries from backend
+  const fetchCountries = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(API_URL);
+      setCountries(res.data);
+      setError("");
+    } catch (err) {
+      setError("Failed to fetch countries");
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchCountries = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_BASE_URL}/countries`
-        );
-        setCountries(response.data);
-        setIsLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setIsLoading(false);
-      }
-    };
     fetchCountries();
   }, []);
 
   const handleCreateOrUpdate = async () => {
+    if (!form.countryName) return;
     try {
       if (editingId !== null) {
-        // Update existing country
-        await axios.put(
-          `${process.env.REACT_APP_API_BASE_URL}/countries/${editingId}`,
-          {
-            countryName: form.countryName,
-            status: form.status,
-          }
-        );
-        const updated = countries.map((c) =>
-          c.id === editingId
-            ? { ...c, countryName: form.countryName, status: form.status }
-            : c
-        );
-        setCountries(updated);
+        await axios.put(`${API_URL}/${editingId}`, form);
       } else {
-        // Create new country
-        const response = await axios.post(
-          `${process.env.REACT_APP_API_BASE_URL}/countries`,
-          {
-            countryName: form.countryName,
-            status: form.status,
-          }
-        );
-        setCountries([...countries, response.data]);
+        await axios.post(API_URL, form);
       }
-      setForm({ countryName: "", status: false });
+      fetchCountries();
       setShowModal(false);
+      setForm({ countryName: "", status: false });
       setEditingId(null);
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError("Failed to save country");
     }
   };
 
-  const toggleStatus = async (id) => {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this country?"))
+      return;
     try {
-      const countryToUpdate = countries.find((c) => c.id === id);
-      await axios.patch(
-        `${process.env.REACT_APP_API_BASE_URL}/countries/${id}/status`,
-        {
-          status: !countryToUpdate.status,
-        }
-      );
-      const updated = countries.map((c) =>
-        c.id === id ? { ...c, status: !c.status } : c
-      );
-      setCountries(updated);
+      await axios.delete(`${API_URL}/${id}`);
+      fetchCountries();
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError("Failed to delete country");
+    }
+  };
+
+  const toggleStatus = async (country) => {
+    try {
+      await axios.patch(`${API_URL}/${country.id}/status`, {
+        status: !country.status,
+      });
+      fetchCountries();
+      setError("");
+    } catch (err) {
+      setError("Failed to toggle status");
     }
   };
 
@@ -95,9 +84,6 @@ const Country = () => {
   const filteredCountries = countries.filter((c) =>
     c.countryName.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  if (isLoading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
 
   return (
     <div className="country-container">
@@ -188,51 +174,64 @@ const Country = () => {
         </div>
       </div>
 
-      <table className="country-table">
-        <thead>
-          <tr>
-            <th>Country Name</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCountries.length > 0 ? (
-            filteredCountries.map((country) => (
-              <tr key={country.id}>
-                <td className="country-name">{country.countryName}</td>
-                <td>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={country.status}
-                      onChange={() => toggleStatus(country.id)}
-                    />
-                    <span className="slider round"></span>
-                  </label>
-                </td>
-                <td>
-                  <button
-                    className="edit-btn"
-                    onClick={() => startEditing(country)}
-                    title="Edit country"
-                  >
-                    <FiEdit size={16} />
-                  </button>
+      {error && <div className="error-message">{error}</div>}
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <table className="country-table">
+          <thead>
+            <tr>
+              <th>Country Name</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredCountries.length > 0 ? (
+              filteredCountries.map((country) => (
+                <tr key={country.id}>
+                  <td className="country-name">{country.countryName}</td>
+                  <td>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={country.status}
+                        onChange={() => toggleStatus(country)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button
+                      className="edit-btn"
+                      onClick={() => startEditing(country)}
+                      title="Edit country"
+                    >
+                      <FiEdit size={16} />
+                    </button>
+                    <button
+                      className="edit-btn"
+                      style={{ color: "red", marginLeft: 8 }}
+                      onClick={() => handleDelete(country.id)}
+                      title="Delete country"
+                    >
+                      &#10006;
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="no-results">
+                  {searchTerm
+                    ? "No matching countries found"
+                    : "No countries available"}
                 </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="3" className="no-results">
-                {searchTerm
-                  ? "No matching countries found"
-                  : "No countries available"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };
