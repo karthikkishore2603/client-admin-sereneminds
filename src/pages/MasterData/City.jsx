@@ -1,72 +1,68 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
 import "./City.css";
-import { FiEdit, FiDownload, FiMaximize2, FiFilter } from "react-icons/fi";
+import { FiEdit, FiDownload, FiMaximize2, FiFilter, FiTrash2 } from "react-icons/fi";
 
-const API_URL = "http://localhost:5000/api/cities";
+// Initial static data
+const initialCities = [
+  {
+    id: 1,
+    country: "India",
+    state: "Maharashtra",
+    city: "Mumbai",
+    status: true,
+  },
+  {
+    id: 2,
+    country: "USA",
+    state: "California",
+    city: "Los Angeles",
+    status: true,
+  },
+  { id: 3, country: "UK", state: "England", city: "London", status: false },
+];
 
 const City = () => {
-  const [cities, setCities] = useState([]);
+  const [cities, setCities] = useState(initialCities);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ country: "", state: "", city: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const fetchCities = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(API_URL);
-      setCities(res.data);
-      setError("");
-    } catch (err) {
-      setError("Failed to fetch cities");
+  const handleCreateOrUpdate = () => {
+    if (!form.city || !form.state || !form.country) {
+      setError("All fields are required");
+      return;
     }
-    setLoading(false);
+    if (editingId !== null) {
+      setCities((prev) =>
+        prev.map((c) => (c.id === editingId ? { ...c, ...form } : c))
+      );
+    } else {
+      const newId = cities.length
+        ? Math.max(...cities.map((c) => c.id)) + 1
+        : 1;
+      setCities([...cities, { ...form, id: newId, status: true }]);
+    }
+    setShowModal(false);
+    setForm({ country: "", state: "", city: "" });
+    setEditingId(null);
+    setError("");
   };
 
-  useEffect(() => {
-    fetchCities();
-  }, []);
-
-  const handleCreateOrUpdate = async () => {
-    if (!form.city || !form.state || !form.country) return;
-    try {
-      if (editingId !== null) {
-        await axios.put(`${API_URL}/${editingId}`, form);
-      } else {
-        await axios.post(API_URL, form);
-      }
-      fetchCities();
-      setShowModal(false);
-      setForm({ country: "", state: "", city: "" });
-      setEditingId(null);
-      setError("");
-    } catch (err) {
-      setError("Failed to save city");
-    }
-  };
-
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (!window.confirm("Are you sure you want to delete this city?")) return;
-    try {
-      await axios.delete(`${API_URL}/${id}`);
-      fetchCities();
-      setError("");
-    } catch (err) {
-      setError("Failed to delete city");
-    }
+    setCities((prev) => prev.filter((c) => c.id !== id));
+    setError("");
   };
 
-  const toggleStatus = async (id) => {
-    try {
-      await axios.patch(`${API_URL}/${id}/toggle-status`);
-      fetchCities();
-      setError("");
-    } catch (err) {
-      setError("Failed to toggle status");
-    }
+  const toggleStatus = (id) => {
+    setCities((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: !c.status } : c))
+    );
+    setError("");
   };
 
   const startEditing = (city) => {
@@ -81,6 +77,13 @@ const City = () => {
 
   const filteredCities = cities.filter((city) =>
     city.city.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalEntries = filteredCities.length;
+  const totalPages = Math.ceil(totalEntries / pageSize);
+  const paginatedCities = filteredCities.slice(
+    (page - 1) * pageSize,
+    page * pageSize
   );
 
   return (
@@ -122,6 +125,7 @@ const City = () => {
                   setShowModal(false);
                   setForm({ country: "", state: "", city: "" });
                   setEditingId(null);
+                  setError("");
                 }}
               >
                 Cancel
@@ -130,16 +134,24 @@ const City = () => {
                 {editingId !== null ? "Update" : "Submit"}
               </button>
             </div>
+            {error && <div className="error-message">{error}</div>}
           </div>
         </div>
       )}
 
       <div className="city-header">
-        <select className="dropdown">
-          <option>10</option>
-          <option>25</option>
-          <option>50</option>
-          <option>100</option>
+        <select
+          className="dropdown"
+          value={pageSize}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
         </select>
         <input
           type="text"
@@ -155,6 +167,7 @@ const City = () => {
               setForm({ country: "", state: "", city: "" });
               setEditingId(null);
               setShowModal(true);
+              setError("");
             }}
           >
             + Create
@@ -172,67 +185,95 @@ const City = () => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <table className="city-table">
-          <thead>
-            <tr>
-              <th>City Name</th>
-              <th>State</th>
-              <th>Country</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCities.length > 0 ? (
-              filteredCities.map((city) => (
-                <tr key={city.id}>
-                  <td className="city-name">{city.city}</td>
-                  <td className="state-name">{city.state}</td>
-                  <td className="country-name">{city.country}</td>
-                  <td>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={city.status}
-                        onChange={() => toggleStatus(city.id)}
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </td>
-                  <td>
-                    <button
-                      className="edit-btn"
-                      onClick={() => startEditing(city)}
-                      title="Edit city"
-                    >
-                      <FiEdit size={16} />
-                    </button>
-                    <button
-                      className="edit-btn"
-                      style={{ color: "red", marginLeft: 8 }}
-                      onClick={() => handleDelete(city.id)}
-                      title="Delete city"
-                    >
-                      &#10006;
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="no-results">
-                  {searchTerm
-                    ? "No matching cities found"
-                    : "No cities available"}
+      <table className="city-table">
+        <thead>
+          <tr>
+            <th>City Name</th>
+            <th>State</th>
+            <th>Country</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedCities.length > 0 ? (
+            paginatedCities.map((city) => (
+              <tr key={city.id}>
+                <td className="city-name">{city.city}</td>
+                <td className="state-name">{city.state}</td>
+                <td className="country-name">{city.country}</td>
+                <td>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={city.status}
+                      onChange={() => toggleStatus(city.id)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </td>
+                <td>
+                  <button
+                    className="edit-btn"
+                    onClick={() => startEditing(city)}
+                    title="Edit city"
+                  >
+                    <FiEdit size={16} />
+                  </button>
+                  <button
+                    className="edit-btn"
+                    style={{ color: "red", marginLeft: 8 }}
+                    onClick={() => handleDelete(city.id)}
+                    title="Delete city"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      )}
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="no-results">
+                {searchTerm
+                  ? "No matching cities found"
+                  : "No cities available"}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <div className="pagination">
+        <span>
+          {`Showing ${
+            totalEntries === 0 ? 0 : (page - 1) * pageSize + 1
+          } to ${
+            page * pageSize > totalEntries ? totalEntries : page * pageSize
+          } of ${totalEntries} entries`}
+        </span>
+        <div className="pages">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            {"<"}
+          </button>
+          {[...Array(totalPages)].map((_, idx) => (
+            <button
+              key={idx + 1}
+              className={page === idx + 1 ? "active" : ""}
+              onClick={() => setPage(idx + 1)}
+            >
+              {idx + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || totalPages === 0}
+          >
+            {">"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

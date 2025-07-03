@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./Country.css";
-import { FiEdit, FiDownload, FiMaximize2, FiFilter } from "react-icons/fi";
+import {
+  FiEdit,
+  FiDownload,
+  FiMaximize2,
+  FiFilter,
+  FiTrash2,
+} from "react-icons/fi";
 
 const API_URL = "http://localhost:5000/api/countries";
 
@@ -13,6 +19,8 @@ const Country = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchCountries = async () => {
     setLoading(true);
@@ -85,6 +93,13 @@ const Country = () => {
     c.countryName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalEntries = filteredCountries.length;
+  const totalPages = Math.ceil(totalEntries / pageSize);
+  const paginatedCountries = filteredCountries.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
   return (
     <div className="country-container">
       {showModal && (
@@ -136,11 +151,18 @@ const Country = () => {
       )}
 
       <div className="country-header">
-        <select className="dropdown">
-          <option>10</option>
-          <option>25</option>
-          <option>50</option>
-          <option>100</option>
+        <select
+          className="dropdown"
+          value={pageSize}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
         </select>
 
         <input
@@ -187,8 +209,8 @@ const Country = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredCountries.length > 0 ? (
-              filteredCountries.map((country) => (
+            {paginatedCountries.length > 0 ? (
+              paginatedCountries.map((country) => (
                 <tr key={country.id}>
                   <td className="country-name">{country.countryName}</td>
                   <td>
@@ -215,7 +237,7 @@ const Country = () => {
                       onClick={() => handleDelete(country.id)}
                       title="Delete country"
                     >
-                      &#10006;
+                      <FiTrash2 size={16} />
                     </button>
                   </td>
                 </tr>
@@ -232,6 +254,39 @@ const Country = () => {
           </tbody>
         </table>
       )}
+
+      <div className="pagination">
+        <span>
+          {`Showing ${
+            totalEntries === 0 ? 0 : (page - 1) * pageSize + 1
+          } to ${
+            page * pageSize > totalEntries ? totalEntries : page * pageSize
+          } of ${totalEntries} entries`}
+        </span>
+        <div className="pages">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            {"<"}
+          </button>
+          {[...Array(totalPages)].map((_, idx) => (
+            <button
+              key={idx + 1}
+              className={page === idx + 1 ? "active" : ""}
+              onClick={() => setPage(idx + 1)}
+            >
+              {idx + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || totalPages === 0}
+          >
+            {">"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

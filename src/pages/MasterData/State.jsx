@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FiDownload, FiMaximize2, FiFilter, FiEdit } from "react-icons/fi";
+import {
+  FiDownload,
+  FiMaximize2,
+  FiFilter,
+  FiEdit,
+  FiTrash2,
+} from "react-icons/fi";
 import "./State.css";
 
 const API_URL = "http://localhost:5000/api/states";
@@ -229,7 +235,7 @@ const State = () => {
                       onClick={() => handleDelete(state.id)}
                       title="Delete state"
                     >
-                      &#10006;
+                      <FiTrash2 size={16} />
                     </button>
                   </td>
                 </tr>
